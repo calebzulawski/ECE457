@@ -10,6 +10,7 @@ typedef struct {
     int          outfile_index;
     int          infiles_index;
     int          verbose;
+    unsigned int mode;
 } Options;
 
 typedef enum {

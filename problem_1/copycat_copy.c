@@ -21,7 +21,7 @@ void cc_copy(Options* options) {
 
     // Open output file
     if (options->outfile_index != -1) {
-        fo = open(options->argv[options->outfile_index], w_flags);
+        fo = open(options->argv[options->outfile_index], w_flags, (mode_t) options->mode);
         if (fo == -1)
             cc_error_f(CC_F_OPEN_WR, errno, options->argv[options->outfile_index]);
     } else {
@@ -42,7 +42,7 @@ void cc_copy(Options* options) {
         } else if (status == CC_F_WRITE) {
             cc_error_f(status, err, options->argv[options->outfile_index]);
         }
-    } else{
+    } else {
         for (int i = options->infiles_index; i < options->argc; i++) {
             if (!strcmp(options->argv[i], "-")) {
                 fi = STDIN_FILENO;

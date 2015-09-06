@@ -11,12 +11,17 @@ cc_error_t cc_parse_args(int argc, char* argv[], Options* options) {
     options->outfile_index = -1;
     options->argc = argc;
     options->argv = argv;
+    options->mode = 0665;
 
     int c;
-    while ((c = getopt(argc, argv, "+b:o:vh")) != -1) {
+    while ((c = getopt(argc, argv, "+b:m:o:vh")) != -1) {
         switch (c) {
             case 'b':
                 if ( !sscanf(optarg, "%u", &options->buffersize) )
+                    cc_error(CC_USAGE);
+                break;
+            case 'm':
+                if ( !sscanf(optarg, "%o", &options->mode) )
                     cc_error(CC_USAGE);
                 break;
             case 'o':
@@ -42,7 +47,7 @@ cc_error_t cc_parse_args(int argc, char* argv[], Options* options) {
 void cc_log(Options* options) {
     if (options->verbose) {
         // OUTPUT FILE
-        if (options->outfile_index)
+        if (options->outfile_index != -1)
             printf("Output file:\t%s\n", options->argv[options->outfile_index]);
         else
             printf("Printing to standard output stream\n");
@@ -56,6 +61,9 @@ void cc_log(Options* options) {
 
         // BUFFER SIZE
         printf("Buffer size:\t%u\n", options->buffersize);
+
+        // OUTPUT FILE PERMISSIONS
+        printf("Output mode:\t%o\n", options->mode);
     }
 }
 
