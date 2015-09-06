@@ -7,11 +7,11 @@
 #include <string.h>    // strerror
 
 cc_error_t cc_parse_args(int argc, char* argv[], Options* options) {
-    options->buffersize = DEFAULT_BUFFER_SIZE;
+    options->buffersize    = DEFAULT_BUFFER_SIZE;
     options->outfile_index = -1;
-    options->argc = argc;
-    options->argv = argv;
-    options->mode = DEFAULT_FILE_PERM;
+    options->argc          = argc;
+    options->argv          = argv;
+    options->mode          = DEFAULT_FILE_PERM;
 
     int c;
     while ((c = getopt(argc, argv, "+b:m:o:vh")) != -1) {
