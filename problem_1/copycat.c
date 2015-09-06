@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
 
 cc_error_t cc_parse_args(int argc, char* argv[], Options* options) {
 	int c;
-	while ((c = getopt(argc, argv, "b:o:vh")) != -1) {
+	while ((c = getopt(argc, argv, "+b:o:vh")) != -1) {
 		switch (c) {
 			case 'b':
 				if ( !sscanf(optarg, "%u", &options->buffersize) )
@@ -52,9 +52,6 @@ cc_error_t cc_parse_args(int argc, char* argv[], Options* options) {
 				break;
 		}
 	}
-
-	if (argc < optind)
-		return USAGE;
 
 	options->infiles_index = optind;
 
