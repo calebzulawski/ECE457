@@ -14,8 +14,8 @@
 void cc_copy(Options* options) {
     int /*fee*/ fi, fo /*fum*/;
     const int w_flags = O_WRONLY // Read only
-                     || O_CREAT  // Create file if it doesn't exist
-                     || O_TRUNC; // Truncate the file if it does
+                      | O_CREAT  // Create file if it doesn't exist
+                      | O_TRUNC; // Truncate the file if it does
 
     const int r_flags = O_RDONLY; // Read only
 
@@ -33,21 +33,32 @@ void cc_copy(Options* options) {
     if (buffer == NULL)
         cc_error(CC_MALLOC_FAIL);
 
-    for (int i = options->infiles_index; i < options->argc; i++) {
-        if (!strcmp(options->argv[i], "-")) {
-            fi = STDERR_FILENO;
-        } else {
-            fi = open(options->argv[i], r_flags);
-            if (fi == -1)
-                cc_error_f(CC_F_OPEN_RD, errno, options->argv[i]);
-        }
-
+    if (options->infiles_index >= options->argc) {
+        fi = STDIN_FILENO;
         int err = 0;
         cc_file_error_t status = cc_copy_file(fi, fo, options->buffersize, buffer, &err);
         if (status == CC_F_READ) {
-            cc_error_f(status, err, options->argv[i]);
+            cc_error_f(status, err, "STDIN");
         } else if (status == CC_F_WRITE) {
             cc_error_f(status, err, options->argv[options->outfile_index]);
+        }
+    } else{
+        for (int i = options->infiles_index; i < options->argc; i++) {
+            if (!strcmp(options->argv[i], "-")) {
+                fi = STDIN_FILENO;
+            } else {
+                fi = open(options->argv[i], r_flags);
+                if (fi == -1)
+                    cc_error_f(CC_F_OPEN_RD, errno, options->argv[i]);
+            }
+
+            int err = 0;
+            cc_file_error_t status = cc_copy_file(fi, fo, options->buffersize, buffer, &err);
+            if (status == CC_F_READ) {
+                cc_error_f(status, err, options->argv[i]);
+            } else if (status == CC_F_WRITE) {
+                cc_error_f(status, err, options->argv[options->outfile_index]);
+            }
         }
     }
 }
