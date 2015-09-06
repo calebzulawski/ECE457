@@ -32,7 +32,7 @@ cc_error_t      cc_parse_args(int argc, char* argv[], Options* options);
 
 void            cc_error(cc_error_t e);
 
-void            cc_error_f(cc_file_error_t e);
+void            cc_error_f(cc_file_error_t e, int err, char filename[]);
 
 void            cc_log(Options* options);
 
