@@ -11,7 +11,7 @@ cc_error_t cc_parse_args(int argc, char* argv[], Options* options) {
     options->outfile_index = -1;
     options->argc = argc;
     options->argv = argv;
-    options->mode = 0665;
+    options->mode = DEFAULT_FILE_PERM;
 
     int c;
     while ((c = getopt(argc, argv, "+b:m:o:vh")) != -1) {

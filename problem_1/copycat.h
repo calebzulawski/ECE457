@@ -2,6 +2,7 @@
 #define COPYCAT_H
 
 #define DEFAULT_BUFFER_SIZE 1024 // 1KB
+#define DEFAULT_FILE_PERM   0664 // RW-RW-R--
 
 typedef struct {
     char**       argv;
