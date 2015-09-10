@@ -1,3 +1,10 @@
+/* copycat_cli.c
+ * Caleb Zulawski
+ * 
+ * Handles command line argument parsing, logging,
+ * and displaying errors.
+ */
+
 #include "copycat.h"
 
 /* Library functions */
@@ -6,6 +13,7 @@
 #include <stdlib.h>    // exit
 #include <string.h>    // strerror
 
+/* Parses command line arguments and stores them in a struct */
 cc_error_t cc_parse_args(int argc, char* argv[], Options* options) {
     options->buffersize    = DEFAULT_BUFFER_SIZE;
     options->outfile_index = -1;
@@ -44,8 +52,10 @@ cc_error_t cc_parse_args(int argc, char* argv[], Options* options) {
     return CC_NONE;
 }
 
+/* Logs some information if the -v verbose flag is set */
 void cc_log(Options* options) {
     if (options->verbose) {
+
         // OUTPUT FILE
         if (options->outfile_index != -1)
             printf("Output file:\t%s\n", options->argv[options->outfile_index]);
@@ -67,6 +77,7 @@ void cc_log(Options* options) {
     }
 }
 
+/* Handles errors other than read/write associated */
 void cc_error(cc_error_t e) {
     switch (e) {
         case CC_NONE:
@@ -87,6 +98,7 @@ void cc_error(cc_error_t e) {
     }
 }
 
+/* Handles read/write errors */
 void cc_error_f(cc_file_error_t e, int err, char filename[]) {
     switch (e) {
         case CC_F_NONE:

@@ -1,3 +1,9 @@
+/* copycat.c
+ * Caleb Zulawski
+ * 
+ * Entrance point of the program.
+ */
+
 #include "copycat.h"
 
 int main(int argc, char* argv[]) {
