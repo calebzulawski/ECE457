@@ -6,6 +6,7 @@
 
 # Executables (no extensions)
 copycat
+walker
 
 # Test vectors
 mobydick.txt
