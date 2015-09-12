@@ -12,7 +12,7 @@
 #include <string.h>    // strcmp
 
 /* Linux system calls */
-#include <unistd.h>    // read
+#include <unistd.h>    // read, close
 #include <errno.h>     // errno
 #include <sys/types.h> // open, write
 #include <sys/stat.h>  // open, write
@@ -53,9 +53,12 @@ void cc_copy(Options* options) {
         fi = STDIN_FILENO;
         int err = 0;
         cc_file_error_t status = cc_copy_file(fi, fo, buffersize, buffer, &err);
+        close(fi);
         if (status == CC_F_READ) {
+            close(fo);
             cc_error_f(status, err, "STDIN");
         } else if (status == CC_F_WRITE) {
+            close(fo);
             cc_error_f(status, err, argv[outfile_index]);
         }
     } else {
@@ -71,13 +74,17 @@ void cc_copy(Options* options) {
 
             int err = 0;
             cc_file_error_t status = cc_copy_file(fi, fo, buffersize, buffer, &err);
+            close(fi);
             if (status == CC_F_READ) {
+                close(fo);
                 cc_error_f(status, err, argv[i]);
             } else if (status == CC_F_WRITE) {
+                close(fo);
                 cc_error_f(status, err, argv[outfile_index]);
             }
         }
     }
+    close(fo);
 }
 
 cc_file_error_t cc_copy_file(const int          fi,
