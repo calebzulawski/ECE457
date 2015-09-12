@@ -5,9 +5,10 @@
 
 #include <sys/types.h>
 
-#define WALK_FLAGS      O_PATH
+#define WALK_FLAGS      O_RDONLY | O_DIRECTORY
 #define WALK_BUFFERSIZE 1024
 #define WALK_MAXDEPTH   1024
+#define WALK_PATHLEN    1024
 
 struct linux_dirent64 {
     ino64_t        d_ino;    /* 64-bit inode number */
