@@ -13,4 +13,4 @@ Similar to GNU cat.
   -h           display this help and exit
 ```
 
-![Results](/test/results.png)
+![Results](./test/results.png)
