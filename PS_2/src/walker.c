@@ -10,5 +10,5 @@ int main(int argc, char* argv[]) {
                 break;
         }
     }
-    walk(argv[optind], 0);
+    init_walk(argv[optind]);
 }
