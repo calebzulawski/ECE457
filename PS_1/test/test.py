@@ -37,8 +37,8 @@ if __name__ == '__main__':
 	axes = plt.gca()
 	axes.set_xlim([-1,20])
 	plt.xticks(buffers, buffers_n)
-	plt.xlabel('Buffer size')
-	plt.ylabel('Copy rate (MB/s)')
-	plt.title('Copy rate by buffer size')
+	plt.xlabel('Buffer size', fontsize='large')
+	plt.ylabel('Copy rate (MB/s)', fontsize='large')
+	plt.title('Copy rate by buffer size (25 trials)', fontsize='x-large')
 
 	plt.show()
