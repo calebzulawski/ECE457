@@ -4,94 +4,94 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-void strmode(mode_t mode, char* p) {
+void strmode(mode_t mode, char* modestr) {
 
     /* Type */
     switch (mode & S_IFMT) {
         case S_IFREG: // Regular
-            *p++ = '-';
+            *modestr++ = '-';
             break;
         case S_IFDIR:  // Directory
-            *p++ = 'd';
+            *modestr++ = 'd';
             break;
         case S_IFCHR:  // Character device
-            *p++ = 'c';
+            *modestr++ = 'c';
             break;
         case S_IFBLK:  // Block Device
-            *p++ = 'b';
+            *modestr++ = 'b';
             break;
         case S_IFIFO:  // Named pipe
-            *p++ = 'p';
+            *modestr++ = 'p';
             break;
         case S_IFLNK:  // Symlink
-            *p++ = 'l';
+            *modestr++ = 'l';
             break;
         case S_IFSOCK: // Socket
-            *p++ = 's';
+            *modestr++ = 's';
             break;
         default:       // Otherwise...
-            *p++ = '?';
+            *modestr++ = '?';
             break;
     }
 
-    /* OWNER */
-    *p++ = (mode & S_IRUSR) ? 'r' : '-';
+    /* Owner */
+    *modestr++ = (mode & S_IRUSR) ? 'r' : '-';
 
-    *p++ = (mode & S_IWUSR) ? 'w' : '-';
+    *modestr++ = (mode & S_IWUSR) ? 'w' : '-';
 
     switch (mode & (S_IXUSR | S_ISUID)) {
         case S_IXUSR:
-            *p++ = 'x';
+            *modestr++ = 'x';
             break;
         case 0:
-            *p++ = '-';
+            *modestr++ = '-';
             break;
         case S_ISUID:
-            *p++ = 'S';
+            *modestr++ = 'S';
             break;
         case S_IXUSR | S_ISUID:
-            *p++ = 's';
+            *modestr++ = 's';
             break;
     }
 
-    /* GROUP */
-    *p++ = (mode & S_IRGRP) ? 'r' : '-';
+    /* Group */
+    *modestr++ = (mode & S_IRGRP) ? 'r' : '-';
 
-    *p++ = (mode & S_IWGRP) ? 'w' : '-';
+    *modestr++ = (mode & S_IWGRP) ? 'w' : '-';
 
     switch (mode & (S_IXGRP | S_ISGID)) {
         case S_IXGRP:
-            *p++ = 'x';
+            *modestr++ = 'x';
             break;
         case 0:
-            *p++ = '-';
+            *modestr++ = '-';
             break;
         case S_ISGID:
-            *p++ = 'S';
+            *modestr++ = 'S';
             break;
         case S_IXGRP | S_ISGID:
-            *p++ = 's';
+            *modestr++ = 's';
             break;
     }
 
-    /* OTHER */
-    *p++ = (mode & S_IROTH) ? 'r' : '-';
+    /* Other */
+    *modestr++ = (mode & S_IROTH) ? 'r' : '-';
 
-    *p++ = (mode & S_IWOTH) ? 'w' : '-';
+    *modestr++ = (mode & S_IWOTH) ? 'w' : '-';
 
     switch (mode & (S_IXOTH | S_ISVTX)) {
         case S_IXOTH:
-            *p++ = 'x';
+            *modestr++ = 'x';
             break;
         case 0:
-            *p++ = '-';
+            *modestr++ = '-';
             break;
         case S_ISVTX:
-            *p++ = 'T';
+            *modestr++ = 'T';
             break;
         case S_IXOTH | S_ISVTX:
-            *p++ = 't';
+            *modestr++ = 't';
             break;
     }
-    *p = '\0';
+    *modestr = '\0';
 }

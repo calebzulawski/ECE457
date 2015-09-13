@@ -10,5 +10,8 @@ int main(int argc, char* argv[]) {
                 break;
         }
     }
-    init_walk(argv[optind]);
+    if (optind < argc)
+        init_walk(argv[optind]);
+    else
+        init_walk(".");
 }

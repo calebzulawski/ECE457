@@ -5,6 +5,7 @@
 #include <unistd.h> // close
 #include <stdlib.h> // free
 #include <dirent.h> // DT_ defines
+#include <time.h>   // ctime
 
 void init_walk(char* filename) {
     // Remove unnecessary slash
@@ -70,39 +71,30 @@ void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f
 
 void printstat(const char* filename, int f_next) {
     struct stat s;
-    safe_fstat(f_next, &s);
-    char perms [12];
-    strmode(s.st_mode, perms);
+    safe_lstat(filename, &s);
+    char perms    [12];
+    char user     [17];
+    char group    [17];
+    char size     [16];
+    char linkpath [WALK_PATHLEN];
 
-    printf("%04o/%d\t%s\t%d\t\n", 
+    strmode(s.st_mode, perms);
+    getusrgrp(s.st_uid, s.st_gid, user, group);
+    getsizeid(&s, size);
+    char* mtime = ctime(&s.st_mtime);
+    mtime[24] = '\0';
+
+    getlinkcontents(&s, filename, linkpath, WALK_PATHLEN);
+
+    printf( "%04o/%-10d %s  %-5d %-12s %-12s %-16s %s %s %s\n", 
         (unsigned) s.st_dev,
         (int)      s.st_ino,
                    perms,
-        (int)      s.st_nlink);
+        (int)      s.st_nlink,
+                   user,
+                   group,
+                   size,
+                   mtime,
+                   filename,
+                   linkpath );
 }
-
-// void getperms(struct stat * s, char* perms) {
-//     switch (s->st_mode) {
-//         case S_ISREG:
-//             perms[0] = '-';
-//             break;
-//         case S_ISDIR:
-//             perms[0] = 'd';
-//             break;
-//         case S_ISLNK:
-//             perms[0] = 'l';
-//             break;
-//         case S_ISFIFO:
-//             perms[0] = 'p'
-//             break;
-//         case S_ISSOCK:
-//             perms[0] = 's'
-//             break;
-//         case S_ISCHR:
-//             perms[0] = 'c'
-//             break;
-//         case S_ISBLK:
-//             perms[0] = 'b'
-//             break;
-//     }
-// }
