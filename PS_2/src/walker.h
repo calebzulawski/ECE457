@@ -35,7 +35,7 @@ int    safe_openat(int f_base, const char *pathname);
 
 /* Path walk functions */
 
-void init_walk(const char* filename);
+void init_walk(char* filename);
 
 void recursive_walk(const char* dirname, ino_t thisino, ino_t parentino, int f, unsigned depth);
 
