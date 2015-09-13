@@ -6,7 +6,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#define WALK_FLAGS      O_RDONLY | O_DIRECTORY
+#define WALK_INIT_FLAGS O_RDONLY | O_DIRECTORY
+#define WALK_FLAGS      O_RDONLY
 #define WALK_BUFFERSIZE 1024
 #define WALK_MAXDEPTH   1024
 #define WALK_PATHLEN    1024
@@ -33,12 +34,18 @@ int    safe_open(const char *pathname);
 
 int    safe_openat(int f_base, const char *pathname);
 
+int    safe_getdents(int f, char* buffer);
+
+/* strmode, similar to BSD or other systems */
+
+void   strmode(mode_t mode, char* p);
+
 /* Path walk functions */
 
-void init_walk(char* filename);
+void   init_walk(char* filename);
 
-void recursive_walk(const char* dirname, ino_t thisino, ino_t parentino, int f, unsigned depth);
+void   recursive_walk(const char* dirname, ino_t thisino, ino_t parentino, int f, unsigned depth);
 
-void printstat(const char* filename, int f_next);
+void   printstat(const char* filename, int f_next);
 
 #endif /* WALKER_H */

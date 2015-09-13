@@ -1,50 +1,10 @@
 #include "walker.h"
 
-#include <sys/types.h>   // open, stat
-#include <sys/stat.h>    // open, stat
-#include <fcntl.h>       // open
-#include <unistd.h>      // syscall, stat
-#include <sys/syscall.h> // syscall
-#include <dirent.h>      // getdents
-
-#include <stdio.h>       // printf, perror
-#include <stdlib.h>      // malloc
-#include <errno.h>       // errno
-#include <string.h>      // strlen
-
-void * safe_malloc(size_t size) {
-    void * x = malloc(size);
-    if (x == NULL) {
-        perror("malloc()");
-        exit(-1);
-    }
-    return x;
-}
-
-void safe_fstat(int fd, struct stat *buf) {
-    if ( fstat(fd, buf) != 0 ) {
-        perror("fstat()");
-        exit(-1);
-    }
-}
-
-int safe_open(const char *pathname) {
-    int f = open(pathname, WALK_FLAGS);
-    if (!f) {
-        perror(pathname);
-        exit(-1);
-    }
-    return f;
-}
-
-int safe_openat(int f_base, const char *pathname) {
-    int f = openat(f_base, pathname, WALK_FLAGS);
-    if (!f) {
-        perror(pathname);
-        exit(-1);
-    }
-    return f;
-}
+#include <stdio.h>  // printf
+#include <string.h> // strlen
+#include <unistd.h> // close
+#include <stdlib.h> // free
+#include <dirent.h> // DT_ defines
 
 void init_walk(char* filename) {
     // Remove unnecessary slash
@@ -89,7 +49,7 @@ void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f
     struct linux_dirent * d;
     size_t index;
     do {
-        ret = syscall(SYS_getdents, f, buffer, WALK_BUFFERSIZE);
+        ret = safe_getdents(f, buffer);
         for (index = 0; index < ret; ) {
             d = (struct linux_dirent *) (buffer + index);
             if ( d->d_ino != this_ino && d->d_ino != parent_ino ) {
@@ -105,13 +65,44 @@ void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f
             index += d->d_reclen;
         }
     } while (ret > 0);
-    if (ret == -1) {
-        perror("getdents()");
-        exit(-1);
-    }
     free(buffer);
 }
 
 void printstat(const char* filename, int f_next) {
-    printf("%s\n", filename);
+    struct stat s;
+    safe_fstat(f_next, &s);
+    char perms [12];
+    strmode(s.st_mode, perms);
+
+    printf("%04o/%d\t%s\t%d\t\n", 
+        (unsigned) s.st_dev,
+        (int)      s.st_ino,
+                   perms,
+        (int)      s.st_nlink);
 }
+
+// void getperms(struct stat * s, char* perms) {
+//     switch (s->st_mode) {
+//         case S_ISREG:
+//             perms[0] = '-';
+//             break;
+//         case S_ISDIR:
+//             perms[0] = 'd';
+//             break;
+//         case S_ISLNK:
+//             perms[0] = 'l';
+//             break;
+//         case S_ISFIFO:
+//             perms[0] = 'p'
+//             break;
+//         case S_ISSOCK:
+//             perms[0] = 's'
+//             break;
+//         case S_ISCHR:
+//             perms[0] = 'c'
+//             break;
+//         case S_ISBLK:
+//             perms[0] = 'b'
+//             break;
+//     }
+// }
