@@ -13,4 +13,4 @@ Similar to GNU cat.
   -h           display this help and exit
 ```
 
-![Results](./test/results.png)
+![Results](https://raw.githubusercontent.com/calebzulawski/ECE457/master/PS_1/test/results.png)
