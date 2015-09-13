@@ -26,14 +26,16 @@ if __name__ == '__main__':
 		buffer = 2**exp
 		time = timeit.Timer(var2fun([bin, '-b', str(buffer), txt]), setup="import os").timeit(number = trials)
 		buffers.append( exp )
-		rate = size/(time/trials)
+		rate = (size * trials)/(time * 1048576)
 		rates.append( rate )
-		if buffer > 1024:
-			buffers_n.append(str(buffer/1024) + 'KB')
-		else:
+		if buffer < 1024:
 			buffers_n.append(str(buffer) + 'B')
+		else:
+			buffers_n.append(str(buffer/1024) + 'KiB')
 
 	plt.bar(buffers, rates, align='center')
+	axes = plt.gca()
+	axes.set_xlim([-1,20])
 	plt.xticks(buffers, buffers_n)
 	plt.xlabel('Buffer size')
 	plt.ylabel('Copy rate (MB/s)')

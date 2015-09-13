@@ -12,3 +12,5 @@ Similar to GNU cat.
   -o FILE      output to FILE instead of standard output
   -h           display this help and exit
 ```
+
+![Results](/test/results.png)
