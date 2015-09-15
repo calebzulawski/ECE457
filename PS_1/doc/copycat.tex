@@ -1,0 +1,29 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{listings}
+
+\lstset{inputpath=../src}
+
+\begin{document}
+
+\title{Problem 1: System calls, error checking, and reporting}
+\author{Caleb Zulawski}
+
+\maketitle
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{../test/results}
+    \caption{Performance}
+    \label{performancefig}
+\end{figure}
+
+\lstinputlisting[language=C]{copycat.c}
+
+\lstinputlisting[language=C]{copycat.h}
+
+\lstinputlisting[language=C]{copycat_cli.c}
+
+\lstinputlisting[language=C]{copycat_copy.c}
+
+\end{document}

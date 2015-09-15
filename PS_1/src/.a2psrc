@@ -1,0 +1,4 @@
+Options: -1
+Options: --medium=Letter
+Options: --header="Caleb Zulawski"
+DefaultPrinter: | ps2pdf - copycat.pdf

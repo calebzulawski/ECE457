@@ -4,6 +4,13 @@
 # Executables
 *.exe
 
+# Latex
+*.aux
+*.log
+
+# Temporary
+*~
+
 # Executables (no extensions)
 copycat
 walker
