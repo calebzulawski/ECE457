@@ -22,3 +22,6 @@ $(TARGET): $(OBJECTS)
 clean:
 	-rm -f *.o
 	-rm -f $(TARGET)
+
+doc:
+	a2ps *.c *.h --output=../doc/$(TARGET)-src.ps
