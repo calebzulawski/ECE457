@@ -46,7 +46,7 @@ int safe_openat(int f_base, const char *pathname) {
     int f = openat(f_base, pathname, WALK_FLAGS);
     if (f == -1) {
         perror(pathname);
-        exit(-1);
+        // Don't exit
     }
     return f;
 }

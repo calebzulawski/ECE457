@@ -21,6 +21,9 @@ void init_walk(char* filename) {
     struct stat * parentstat = safe_malloc(sizeof(struct stat));
     struct stat * thisstat   = safe_malloc(sizeof(struct stat));
 
+    // inode list
+    ino_t ino_list[WALK_MAXDEPTH+1] = {0};
+
     // Get inodes
     safe_fstat(f_parent, parentstat);
     close(f_parent);
@@ -34,15 +37,18 @@ void init_walk(char* filename) {
     free(thisstat);
 
     // Walk!
-    recursive_walk(filename, this_ino, parent_ino, f, 0);
+    recursive_walk(filename, this_ino, parent_ino, f, 0, ino_list);
 
     // Close directory
     close(f);
 }
 
-void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f, unsigned depth) {
+void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f, unsigned depth, ino_t * ino_list) {
     if (depth > WALK_MAXDEPTH)
         return;
+
+    ino_list[depth]   = this_ino;
+    ino_list[depth+1] = 0;
 
     char* buffer = safe_malloc(WALK_BUFFERSIZE);
 
@@ -55,11 +61,13 @@ void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f
             d = (struct linux_dirent *) (buffer + index);
             if ( d->d_ino != this_ino && d->d_ino != parent_ino ) {
                 int f_next = safe_openat(f, d->d_name);
+                if (f_next == -1)
+                    continue;
                 char* nextfile = safe_malloc(WALK_PATHLEN);
                 sprintf(nextfile, "%s/%s", dirname, d->d_name);
                 printstat(nextfile, f_next);
-                if ( ((char*)d)[d->d_reclen-1] == DT_DIR )
-                    recursive_walk(nextfile, d->d_ino, this_ino, f_next, depth + 1);
+                if ( (((char*)d)[d->d_reclen-1] == DT_DIR) && !is_loop(ino_list, d->d_ino) )
+                    recursive_walk(nextfile, d->d_ino, this_ino, f_next, depth + 1, ino_list);
                 free(nextfile);
                 close(f_next);
             }
@@ -67,6 +75,18 @@ void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f
         }
     } while (ret > 0);
     free(buffer);
+}
+
+int is_loop(ino_t *ino_list, ino_t this_ino) {
+    for (size_t i = 0; i < WALK_MAXDEPTH; i++) {
+        if (ino_list[i] == this_ino) {
+            fprintf(stderr, "Found filesystem loop...\n");
+            return 1;
+        }
+        if (ino_list[i] == 0)
+            continue;
+    }
+    return 0;
 }
 
 void printstat(const char* filename, int f_next) {

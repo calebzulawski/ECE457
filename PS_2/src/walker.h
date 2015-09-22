@@ -58,7 +58,9 @@ void   getlinkcontents(struct stat * s, const char* path, char* buf, size_t bufs
 
 void   init_walk(char* filename);
 
-void   recursive_walk(const char* dirname, ino_t thisino, ino_t parentino, int f, unsigned depth);
+void   recursive_walk(const char* dirname, ino_t thisino, ino_t parentino, int f, unsigned depth, ino_t * ino_list);
+
+int    is_loop(ino_t *ino_list, ino_t this_ino);
 
 void   printstat(const char* filename, int f_next);
 
