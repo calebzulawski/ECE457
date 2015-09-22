@@ -65,7 +65,10 @@ void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f
                     char* nextfile = safe_malloc(WALK_PATHLEN);
                     sprintf(nextfile, "%s/%s", dirname, d->d_name);
                     printstat(nextfile, f_next);
-                    if ( (((char*)d)[d->d_reclen-1] == DT_DIR) && !is_loop(ino_list, d->d_ino) )
+                    int loop = is_loop(ino_list, d->d_ino);
+                    if (loop)
+                        fprintf(stderr, "walker: Found loop in filesystem.  Skipping already walked directory %s\n", d->d_name);
+                    if ( (((char*)d)[d->d_reclen-1] == DT_DIR) && !loop)
                         recursive_walk(nextfile, d->d_ino, this_ino, f_next, depth + 1, ino_list);
                     free(nextfile);
                     close(f_next);
@@ -80,7 +83,6 @@ void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f
 int is_loop(ino_t *ino_list, ino_t this_ino) {
     for (size_t i = 0; i < WALK_MAXDEPTH; i++) {
         if (ino_list[i] == this_ino) {
-            fprintf(stderr, "Found filesystem loop...\n");
             return 1;
         }
         if (ino_list[i] == 0)
