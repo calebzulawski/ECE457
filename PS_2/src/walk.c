@@ -61,15 +61,15 @@ void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f
             d = (struct linux_dirent *) (buffer + index);
             if ( d->d_ino != this_ino && d->d_ino != parent_ino ) {
                 int f_next = safe_openat(f, d->d_name);
-                if (f_next == -1)
-                    continue;
-                char* nextfile = safe_malloc(WALK_PATHLEN);
-                sprintf(nextfile, "%s/%s", dirname, d->d_name);
-                printstat(nextfile, f_next);
-                if ( (((char*)d)[d->d_reclen-1] == DT_DIR) && !is_loop(ino_list, d->d_ino) )
-                    recursive_walk(nextfile, d->d_ino, this_ino, f_next, depth + 1, ino_list);
-                free(nextfile);
-                close(f_next);
+                if (f_next != -1) {
+                    char* nextfile = safe_malloc(WALK_PATHLEN);
+                    sprintf(nextfile, "%s/%s", dirname, d->d_name);
+                    printstat(nextfile, f_next);
+                    if ( (((char*)d)[d->d_reclen-1] == DT_DIR) && !is_loop(ino_list, d->d_ino) )
+                        recursive_walk(nextfile, d->d_ino, this_ino, f_next, depth + 1, ino_list);
+                    free(nextfile);
+                    close(f_next);
+                }
             }
             index += d->d_reclen;
         }
