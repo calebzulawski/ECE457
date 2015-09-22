@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 
 #define WALK_INIT_FLAGS O_RDONLY | O_NOATIME | O_DIRECTORY
-#define WALK_FLAGS      O_RDONLY | O_NOATIME
+#define WALK_FLAGS      O_RDONLY | O_NOATIME | O_NONBLOCK
 #define WALK_BUFFERSIZE 1024
 #define WALK_MAXDEPTH   1024
 #define WALK_PATHLEN    1024
