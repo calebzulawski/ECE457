@@ -57,12 +57,13 @@ void   getlinkcontents(struct stat * s, const char* path, char* buf, size_t bufs
 
 /* Path walk functions */
 
-void   init_walk(char* filename, int stayOnDev, ino_t target, uid_t uid);
+void   init_walk(char* filename, int stayOnDev, ino_t target, uid_t uid, long modTime);
 
 void   recursive_walk(const char* dirname,
 	                  ino_t       thisino,
 	                  dev_t       this_dev,
                       uid_t       uid,
+                      long        modTime,
 	                  ino_t       target,
 	                  int         f,
 	                  unsigned    depth,
@@ -70,6 +71,6 @@ void   recursive_walk(const char* dirname,
 
 int    is_loop(ino_t *ino_list, ino_t this_ino);
 
-int    stat_file(const char* filename, int f_next, dev_t this_dev, ino_t target, uid_t uid);
+int    stat_file(const char* filename, int f_next, dev_t this_dev, ino_t target, uid_t uid, long modTime);
 
 #endif /* WALKER_H */

@@ -16,6 +16,7 @@ int main(int argc, char* argv[]) {
     long uid_temp;
     char end = 'c';
     char* endp = &end;
+    long int modTime;
 
     while ((c = getopt(argc, argv, "+l:xu:m:")) != -1) {
         switch (c) {
@@ -32,6 +33,11 @@ int main(int argc, char* argv[]) {
                     exit(-1);
                 }
                 break;
+            case 'm':
+                modTime = strtol(optarg, &endp, 10);
+                if (*endp != '\0')
+                    exit(-1);
+                break;
             case 'l':
                 safe_stat(optarg, &t);
                 target = t.st_ino;
@@ -44,7 +50,7 @@ int main(int argc, char* argv[]) {
         }
     }
     if (optind < argc)
-        init_walk(argv[optind], stayOnDev, target, uid);
+        init_walk(argv[optind], stayOnDev, target, uid, modTime);
     else
-        init_walk(".", stayOnDev, target, uid);
+        init_walk(".", stayOnDev, target, uid, modTime);
 }
