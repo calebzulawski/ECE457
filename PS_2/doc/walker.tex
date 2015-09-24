@@ -86,4 +86,26 @@ walker: Found loop in filesystem.  Skipping already walked directory 102
 
 \end{lstlisting}
 
+\subsection{Modify time limiting}
+
+\begin{lstlisting}
+$ ./walker -m -3000000 /tmp/test/dir/evilfs/
+walker: Found loop in filesystem.  Skipping already walked directory 102
+walker: Found loop in filesystem.  Skipping already walked directory 2001
+walker: Found loop in filesystem.  Skipping already walked directory A
+3402/12289    drwxr-xr-x  2     caleb    caleb    1024  Tue Sep  8 18:47:37 2015 /tmp/test/dir/evilfs/D 
+3402/12294    lrwxrwxrwx  1     caleb    caleb    12    Tue Sep  8 01:50:44 2015 /tmp/test/dir/evilfs/D/symlink -> .././B/./101
+type_13: Input/output error
+3402/12292    prw-r--r--  1     caleb    caleb    0     Tue Sep  8 01:34:11 2015 /tmp/test/dir/evilfs/D/npipe 
+cdev: No such device or address
+bdev: No such device or address
+walker: Found loop in filesystem.  Skipping already walked directory 102
+(precise)caleb:src$ ./walker -m 3000000 /tmp/test/dir/evilfs/
+3402/4097     drwxr-xr-x  4     caleb    caleb    1024   Mon Jan 30 18:25:20 2012 /tmp/test/dir/evilfs/C 
+3402/4100     -rw-r--r--  1     caleb    caleb    10     Mon Jan 30 18:25:21 2012 /tmp/test/dir/evilfs/C/3 
+3402/4098     drwxr-xr-x  4     caleb    caleb    1024   Mon Jan 30 18:45:34 2012 /tmp/test/dir/evilfs/C/1 
+...
+
+\end{lstlisting}
+
 \end{document}

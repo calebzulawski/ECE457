@@ -2,7 +2,7 @@
 %%Title: functions.c, strmode.c, walk.c, walker.c, walker.h
 %%For: 
 %%Creator: a2ps version 4.14
-%%CreationDate: Thu Sep 24 00:21:15 2015
+%%CreationDate: Thu Sep 24 01:58:26 2015
 %%BoundingBox: 24 24 588 768
 %%DocumentData: Clean7Bit
 %%Orientation: Portrait
@@ -1429,7 +1429,12 @@ x0 y0 moveto
 (char) k
 (* filename, ) p
 (int) k
-( stayOnDev, ino_t target\) {    ) p n
+( stayOnDev, ino_t target, uid_t uid, ) p
+(long) k
+( ) p
+(int) k
+( ) p n
+(modTime\) {    ) N
 (    ) S
 (// Remove unnecessary slash) c n
 (    size_t filelen = strlen\(filename\);) p n
@@ -1451,13 +1456,6 @@ x0 y0 moveto
 (    ) S
 (// Stat) c n
 (    ) p
-(struct) k
-( stat * parentstat = safe_malloc\() p
-(sizeof) K
-(\() p
-(struct) k
-( stat\)\);) p n
-(    ) S
 (struct) k
 ( stat * thisstat   = safe_malloc\() p
 (sizeof) K
@@ -1487,12 +1485,12 @@ x0 y0 moveto
 () N
 (    ) S
 (// Free stat structs) c n
-(    free\(parentstat\);) p n
-(    free\(thisstat\);) N
+(    free\(thisstat\);) p n
 () N
 (    ) S
 (// Walk!) c n
-(    recursive_walk\(filename, this_ino, this_dev, target, f, 0, ino_list\);) p n
+(    recursive_walk\(filename, this_ino, this_dev, uid, modTime, target, f, 0, ino) p n
+(_list\);) N
 () N
 (    ) S
 (// Close directory) c n
@@ -1507,6 +1505,12 @@ x0 y0 moveto
 (* dirname,) p n
 (                    ino_t       this_ino,) N
 (                    dev_t       this_dev,) N
+(                    uid_t       uid,) N
+(                    ) S
+(long) k
+( ) p
+(int) k
+(    modTime,) p n
 (                    ino_t       target,) N
 (                    ) S
 (int) k
@@ -1522,9 +1526,7 @@ x0 y0 moveto
 (        ) S
 (return) K
 (;) p n
-() N
-(    ino_list[depth]   = this_ino;) N
-(walk.c) (Page 1/3) (Sep 23, 15 23:24) title
+(walk.c) (Page 1/3) (Sep 24, 15 1:47) title
 border
 grestore
 (Caleb Zulawski) rhead
@@ -1543,7 +1545,9 @@ llx lly 12 add translate
 /x0 x v get 4.850123 add sx cw mul add store
 /y0 y v get bfs th add sub store
 x0 y0 moveto
-(    ino_list[depth+1] = 0;) p n
+() p n
+(    ino_list[depth]   = this_ino;) N
+(    ino_list[depth+1] = 0;) N
 () N
 (    ) S
 (char) k
@@ -1588,7 +1592,8 @@ x0 y0 moveto
 (                    ) N
 (                    ) S
 (int) k
-( ret   = stat_file\(nextfile, f_next, this_dev, target\);) p n
+( ret   = stat_file\(nextfile, f_next, this_dev, target, ui) p n
+(d, modTime\);) N
 (                    ) S
 (int) k
 ( loop  = is_loop\(ino_list, d->d_ino\);) p n
@@ -1609,8 +1614,8 @@ x0 y0 moveto
 (                    ) S
 (if) K
 ( \( !loop && ret && isdir\)) p n
-(                        recursive_walk\(nextfile, d->d_ino, this_dev, target, f_n) N
-(ext, depth + 1, ino_list\);) N
+(                        recursive_walk\(nextfile, d->d_ino, this_dev, uid, modTim) N
+(e, target, f_next, depth + 1, ino_list\);) N
 (                    free\(nextfile\);) N
 (                    close\(f_next\);) N
 (                }) N
@@ -1654,7 +1659,12 @@ x0 y0 moveto
 (char) k
 (* filename, ) p
 (int) k
-( f_next, dev_t this_dev, ino_t target\) {) p n
+( f_next, dev_t this_dev, ino_t target, ui) p n
+(d_t uid, ) S
+(long) k
+( ) p
+(int) k
+( modTime\) {) p n
 (    ) S
 (struct) k
 ( stat s, t;) p n
@@ -1666,17 +1676,7 @@ x0 y0 moveto
 (    ) S
 (char) k
 ( user     [17];) p n
-(    ) S
-(char) k
-( group    [17];) p n
-(    ) S
-(char) k
-( size     [16];) p n
-(    ) S
-(char) k
-( linkpath [WALK_PATHLEN];) p n
-() N
-(walk.c) (Page 2/3) (Sep 23, 15 23:24) title
+(walk.c) (Page 2/3) (Sep 24, 15 1:47) title
 border
 grestore
 (Caleb Zulawski) rhead
@@ -1695,7 +1695,17 @@ llx lly 12 add translate
 /x0 x v get 4.850123 add sx cw mul add store
 /y0 y v get bfs th add sub store
 x0 y0 moveto
-(    strmode\(s.st_mode, perms\);) p n
+(    ) p
+(char) k
+( group    [17];) p n
+(    ) S
+(char) k
+( size     [16];) p n
+(    ) S
+(char) k
+( linkpath [WALK_PATHLEN];) p n
+() N
+(    strmode\(s.st_mode, perms\);) N
 (    getusrgrp\(s.st_uid, s.st_gid, user, group\);) N
 (    getsizeid\(&s, size\);) N
 (    ) S
@@ -1707,9 +1717,14 @@ x0 y0 moveto
 () N
 (    getlinkcontents\(&s, filename, linkpath, WALK_PATHLEN\);) N
 () N
+(    time_t now = time\(0\);) N
+() N
 (    ) S
 (if) K
-( \( target == 0 || \(t.st_ino == target && t.st_ino != s.st_ino\) \)) p n
+( \( \( target == 0 || \(t.st_ino == target && t.st_ino != s.st_ino\) \)) p n
+(      && \( uid == -1 || \(s.st_uid == uid \) \)) N
+(      && \( modTime == 0 || \(\(modTime > 0\) ? \(\(s.st_mtime + \(time_t\)modTime\) <= n) N
+(ow\) : \(\(s.st_mtime - \(time_t\)modTime\) > now\) \) \) \)) N
 (        printf\( ") S
 (%04o/%-10d %s  %-5d %-12s %-12s %-16s %s %s %s\\n) str
 (", ) p n
@@ -1747,7 +1762,7 @@ x0 y0 moveto
 ( 0;) p n
 (    }) N
 (}) S
-(walk.c) (Page 3/3) (Sep 23, 15 23:24) title
+(walk.c) (Page 3/3) (Sep 24, 15 1:47) title
 border
 grestore
 (Caleb Zulawski) rhead
@@ -1774,7 +1789,18 @@ x0 y0 moveto
 (#include) K
 ( <getopt.h>    ) p
 (// getopt) c n
-() p n
+(#include) K
+( <errno.h>) p n
+(#include) K
+( <stdlib.h>) p n
+(#include) K
+( <pwd.h>       ) p
+(// getpwuid) c n
+(#include) K
+( <string.h>) p n
+(#include) K
+( <limits.h>) p n
+() N
 (int) k
 ( main\() p
 (int) k
@@ -1791,15 +1817,81 @@ x0 y0 moveto
 (    ) S
 (struct) k
 ( stat t;) p n
+(    uid_t uid = -1;  ) S
+(// unsigned, but still invalid uid) c n
+(    ) p
+(long) k
+( uid_temp;) p n
+(    ) S
+(char) k
+( end = ') p
+(c) str
+(';) p n
+(    ) S
+(char) k
+(* endp = &end;) p n
+(    ) S
+(long) k
+( ) p
+(int) k
+( modTime;) p n
 () N
 (    ) S
 (while) K
 ( \(\(c = getopt\(argc, argv, ") p
-(+l:x) str
+(+l:xu:m:) str
 ("\)\) != -1\) {) p n
 (        ) S
 (switch) K
 ( \(c\) {) p n
+(            ) S
+(case) K
+( ') p
+(u) str
+(':) p n
+(                uid_temp = strtol\(optarg, &endp, 10\);) N
+(                ) S
+(if) K
+( \(*endp == ') p
+(\\0) str
+('\) {) p n
+(                    uid = uid_temp;) N
+(                    ) S
+(break) K
+(;) p n
+(                }) N
+(                ) S
+(struct) k
+( passwd * p = getpwnam\(optarg\);) p n
+(                ) S
+(if) K
+( \(p != ) p
+(NULL) K
+(\) {) p n
+(                    uid = p->pw_uid;) N
+(                } ) S
+(else) K
+( {) p n
+(                    exit\(-1\);) N
+(                }) N
+(                ) S
+(break) K
+(;) p n
+(            ) S
+(case) K
+( ') p
+(m) str
+(':) p n
+(                modTime = strtol\(optarg, &endp, 10\);) N
+(                ) S
+(if) K
+( \(*endp != ') p
+(\\0) str
+('\)) p n
+(                    exit\(-1\);) N
+(                ) S
+(break) K
+(;) p n
 (            ) S
 (case) K
 ( ') p
@@ -1832,14 +1924,14 @@ x0 y0 moveto
 (    ) S
 (if) K
 ( \(optind < argc\)) p n
-(        init_walk\(argv[optind], stayOnDev, target\);) N
+(        init_walk\(argv[optind], stayOnDev, target, uid, modTime\);) N
 (    ) S
 (else) K n
 (        init_walk\(") p
 (.) str
-(", stayOnDev, target\);) p n
+(", stayOnDev, target, uid, modTime\);) p n
 (}) S
-(walker.c) (Page 1/1) (Sep 23, 15 22:52) title
+(walker.c) (Page 1/1) (Sep 24, 15 1:40) title
 border
 grestore
 (Caleb Zulawski) rhead
@@ -2006,7 +2098,7 @@ x0 y0 moveto
 (iz\);) N
 () N
 (/* Path walk functions */) c n
-(walker.h) (Page 1/2) (Sep 24, 15 0:12) title
+(walker.h) (Page 1/2) (Sep 24, 15 1:22) title
 border
 grestore
 (Caleb Zulawski) rhead
@@ -2031,7 +2123,10 @@ x0 y0 moveto
 (char) k
 (* filename, ) p
 (int) k
-( stayOnDev, ino_t target\);) p n
+( stayOnDev, ino_t target, uid_t uid, ) p
+(long) k
+( mo) p n
+(dTime\);) N
 () N
 (void) k
 (   recursive_walk\() p
@@ -2041,6 +2136,10 @@ x0 y0 moveto
 (* dirname,) p n
 () S 8 T (                  ino_t       thisino,) N
 () S 8 T (                  dev_t       this_dev,) N
+(                      uid_t       uid,) N
+(                      ) S
+(long) k
+(        modTime,) p n
 () S 8 T (                  ino_t       target,) N
 () S 8 T (                  ) S
 (int) k
@@ -2060,13 +2159,15 @@ x0 y0 moveto
 (char) k
 (* filename, ) p
 (int) k
-( f_next, dev_t this_dev, ino_t target\)) p n
-(;) N
+( f_next, dev_t this_dev, ino_t target,) p n
+( uid_t uid, ) S
+(long) k
+( modTime\);) p n
 () N
 (#endif) K
 ( ) p
 (/* WALKER_H */) c
-(walker.h) (Page 2/2) (Sep 24, 15 0:12) title
+(walker.h) (Page 2/2) (Sep 24, 15 1:22) title
 border
 grestore
 (Caleb Zulawski) rhead
