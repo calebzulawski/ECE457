@@ -1,0 +1,89 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage[letterpaper, landscape, margin=0.5in]{geometry}
+
+\lstset{
+	basicstyle=\ttfamily,
+	inputpath=../src,
+  breaklines=true
+}
+
+\begin{document}
+
+\title{Problem 2: Recursive filesystem exploration}
+\author{Caleb Zulawski}
+
+\maketitle
+
+\section{Character/Block device problem}
+Since the getdents system call provides filenames and not full paths, I opted to use openat(2).
+This allowed me to open each file and directory, then use fstat(2), then continue recursively with openat.
+An unexpected problem was that opening more ``interesting'' files became problematic.
+Opening named pipes was possible with the O\_NONBLOCK flag.
+I was unable to find a way to open character and block devices (that did not correspond to an actual device or address).
+If I had the time I could have reworked the program to use full paths and pass the full path to stat(2).
+It is possible that there is a more elegant way that still uses file descriptors.
+
+\section{Example output}
+
+\subsection{Full walk}
+
+\begin{lstlisting}
+$ ./walker /tmp/test/dir/evilfs
+3402/4097    drwxr-xr-x  4     caleb    caleb    1024   Mon Jan 30 18:25:20 2012 /tmp/test/dir/evilfs/C 
+3402/4100    -rw-r--r--  1     caleb    caleb    10     Mon Jan 30 18:25:21 2012 /tmp/test/dir/evilfs/C/3 
+3402/4098    drwxr-xr-x  4     caleb    caleb    1024   Mon Jan 30 18:45:34 2012 /tmp/test/dir/evilfs/C/1 
+3402/4103    drwxr-xr-x  2     caleb    caleb    1024   Mon Jan 30 18:45:34 2012 /tmp/test/dir/evilfs/C/1/z 
+3402/8195    drwxr-xr-x  5     caleb    caleb    1024   Mon Jan 30 18:45:05 2012 /tmp/test/dir/evilfs/C/1/z/3001 
+3402/8196    drwxr-xr-x  3     caleb    caleb    1024   Mon Jan 30 18:45:16 2012 /tmp/test/dir/evilfs/C/1/z/3001/c 
+3402/8193    drwxr-xr-x  4     caleb    caleb    1024   Mon Jan 30 18:44:59 2012 /tmp/test/dir/evilfs/C/1/z/3001/c/1002 
+3402/8194    -rw-r--r--  1     caleb    caleb    12     Mon Jan 30 18:25:50 2012 /tmp/test/dir/evilfs/C/1/z/3001/c/1002/101 
+3402/8195    drwxr-xr-x  5     caleb    caleb    1024   Mon Jan 30 18:45:05 2012 /tmp/test/dir/evilfs/C/1/z/3001/c/1002/102 
+walker: Found loop in filesystem.  Skipping already walked directory 102
+3402/8198    drwxr-xr-x  2     caleb    caleb    1024   Mon Jan 30 18:45:16 2012 /tmp/test/dir/evilfs/C/1/z/3001/c/1001 
+3402/8197    drwxr-xr-x  2     caleb    caleb    1024   Mon Jan 30 18:45:05 2012 /tmp/test/dir/evilfs/C/1/z/3001/d 
+3402/4098    drwxr-xr-x  4     caleb    caleb    1024   Mon Jan 30 18:45:34 2012 /tmp/test/dir/evilfs/C/1/z/3001/d/2001 
+walker: Found loop in filesystem.  Skipping already walked directory 2001
+3402/4102    -rw-r--r--  1     caleb    caleb    10     Mon Jan 30 18:25:30 2012 /tmp/test/dir/evilfs/C/1/b 
+3402/4101    -rw-r--r--  1     caleb    caleb    10     Mon Jan 30 18:25:27 2012 /tmp/test/dir/evilfs/C/1/a 
+3402/4099    -rw-r--r--  1     caleb    caleb    10     Mon Jan 30 18:25:18 2012 /tmp/test/dir/evilfs/C/2 
+3402/4097    drwxr-xr-x  4     caleb    caleb    1024   Mon Jan 30 18:25:20 2012 /tmp/test/dir/evilfs/A 
+walker: Found loop in filesystem.  Skipping already walked directory A
+3402/11      drwx------  2     caleb    caleb    12288  Mon Jan 30 18:24:56 2012 /tmp/test/dir/evilfs/lost+found 
+3402/12289   drwxr-xr-x  2     caleb    caleb    1024   Tue Sep  8 18:47:37 2015 /tmp/test/dir/evilfs/D 
+3402/12294   lrwxrwxrwx  1     caleb    caleb    12     Tue Sep  8 01:50:44 2015 /tmp/test/dir/evilfs/D/symlink -> .././B/./101
+type_13: Input/output error
+3402/12292   prw-r--r--  1     caleb    caleb    0      Tue Sep  8 01:34:11 2015 /tmp/test/dir/evilfs/D/npipe 
+cdev: No such device or address
+bdev: No such device or address
+3402/8193    drwxr-xr-x  4     caleb    caleb    1024   Mon Jan 30 18:44:59 2012 /tmp/test/dir/evilfs/B 
+3402/8194    -rw-r--r--  1     caleb    caleb    12     Mon Jan 30 18:25:50 2012 /tmp/test/dir/evilfs/B/101 
+3402/8195    drwxr-xr-x  5     caleb    caleb    1024   Mon Jan 30 18:45:05 2012 /tmp/test/dir/evilfs/B/102 
+walker: Found loop in filesystem.  Skipping already walked directory 102
+\end{lstlisting}
+
+\subsection{Remaining in single filesystem}
+
+\begin{lstlisting}
+$ ./walker -x /tmp/test/dir/
+3402/2       drwxr-xr-x  6     caleb    caleb    1024   Tue Sep  8 01:32:45 2015 /tmp/test/dir/evilfs 
+walker (-x): not crossing mountpoint at /tmp/test/dir/evilfs
+\end{lstlisting}
+
+\subsection{Symlink option}
+
+\begin{lstlisting}
+$ ./walker -l /tmp/test/dir/evilfs/B/101 /tmp/test/dir/evilfs
+walker: Found loop in filesystem.  Skipping already walked directory 102
+walker: Found loop in filesystem.  Skipping already walked directory 2001
+walker: Found loop in filesystem.  Skipping already walked directory A
+3402/12294    lrwxrwxrwx  1     caleb    caleb    12    Tue Sep  8 01:50:44 2015 /tmp/test/dir/evilfs/D/symlink -> .././B/./101
+type_13: Input/output error
+cdev: No such device or address
+bdev: No such device or address
+walker: Found loop in filesystem.  Skipping already walked directory 102
+
+\end{lstlisting}
+
+\end{document}

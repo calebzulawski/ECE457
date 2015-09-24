@@ -1,0 +1,2080 @@
+%!PS-Adobe-3.0
+%%Title: functions.c, strmode.c, walk.c, walker.c, walker.h
+%%For: 
+%%Creator: a2ps version 4.14
+%%CreationDate: Thu Sep 24 00:21:15 2015
+%%BoundingBox: 24 24 588 768
+%%DocumentData: Clean7Bit
+%%Orientation: Portrait
+%%Pages: 10
+%%PageOrder: Ascend
+%%DocumentMedia: Letter 612 792 0 () ()
+%%DocumentNeededResources: font Courier
+%%+ font Courier-Bold
+%%+ font Courier-BoldOblique
+%%+ font Courier-Oblique
+%%+ font Helvetica
+%%+ font Helvetica-Bold
+%%+ font Symbol
+%%+ font Times-Bold
+%%+ font Times-Roman
+%%DocumentProcessColors: Black 
+%%DocumentSuppliedResources: procset a2ps-a2ps-hdr
+%%+ procset a2ps-black+white-Prolog
+%%+ encoding ISO-8859-1Encoding
+%%EndComments
+/a2psdict 200 dict def
+a2psdict begin
+%%BeginProlog
+%%Copyright: (c) 1988, 89, 90, 91, 92, 93 Miguel Santana
+%%Copyright: (c) 1995, 96, 97, 98 Akim Demaille, Miguel Santana
+% Check PostScript language level.
+/languagelevel where {
+  pop /gs_languagelevel languagelevel def
+} {
+  /gs_languagelevel 1 def
+} ifelse
+
+% EPSF import as in the Red Book
+/BeginInclude {
+  /b4_Inc_state save def    		% Save state for cleanup
+  /dict_count countdictstack def	% Count objects on dict stack
+  /op_count count 1 sub def		% Count objects on operand stack 
+  userdict begin
+    0 setgray 0 setlinecap
+    1 setlinewidth 0 setlinejoin
+    10 setmiterlimit [ ] 0 setdash newpath
+    gs_languagelevel 1 ne {
+      false setstrokeadjust false setoverprint 
+    } if
+} bind def
+
+/EndInclude {
+  count op_count sub { pos } repeat	% Clean up stacks
+  countdictstack dict_count sub { end } repeat
+  b4_Inc_state restore
+} bind def
+
+/BeginEPSF {
+  BeginInclude
+  /showpage { } def
+} bind def
+
+/EndEPSF {
+  EndInclude
+} bind def
+
+% Page prefeed
+/page_prefeed {         % bool -> -
+  statusdict /prefeed known {
+    statusdict exch /prefeed exch put
+  } {
+    pop
+  } ifelse
+} bind def
+
+/deffont {
+  findfont exch scalefont def
+} bind def
+
+/reencode_font {
+  findfont reencode 2 copy definefont pop def
+} bind def
+
+% Function c-show (str => -)
+% centers text only according to x axis.
+/c-show { 
+  dup stringwidth pop
+  2 div neg 0 rmoveto
+  show
+} bind def
+
+% Function l-show (str => -)
+% prints texts so that it ends at currentpoint
+/l-show {
+  dup stringwidth pop neg 
+  0 
+  rmoveto show
+} bind def
+
+% center-fit show (str w => -)
+% show centered, and scale currentfont so that the width is less than w
+/cfshow {
+  exch dup stringwidth pop
+  % If the title is too big, try to make it smaller
+  3 2 roll 2 copy
+  gt
+  { % if, i.e. too big
+    exch div
+    currentfont exch scalefont setfont
+  } { % ifelse
+    pop pop 
+  }
+  ifelse
+  c-show			% center title
+} bind def
+
+% Return the y size of the current font
+% - => fontsize
+/currentfontsize {
+  currentfont /FontType get 0 eq {
+    currentfont /FontMatrix get 3 get
+  }{
+    currentfont /FontMatrix get 3 get 1000 mul
+  } ifelse
+} bind def
+
+% reencode the font
+% <encoding-vector> <fontdict> -> <newfontdict>
+/reencode { %def
+  dup length 5 add dict begin
+    { %forall
+      % <vector> <key> <val>
+      1 index /FID ne 
+      { def }{ pop pop } ifelse
+    } forall
+    /Encoding exch def % -
+
+    % Use the font's bounding box to determine the ascent, descent,
+    % and overall height; don't forget that these values have to be
+    % transformed using the font's matrix.
+    % We use `load' because sometimes BBox is executable, sometimes not.
+    % Since we need 4 numbers an not an array avoid BBox from being executed
+    /FontBBox load aload pop
+    FontMatrix transform /Ascent exch def pop
+    FontMatrix transform /Descent exch def pop
+    /FontHeight Ascent Descent sub def
+
+    % Get the underline position and thickness if they're defined.
+    % Use 1 if they are not defined.
+    currentdict /FontInfo 2 copy known
+    { get
+      /UnderlinePosition 2 copy % <FontInfo> /UP <FontInfo> /UP
+      2 copy known
+      { get }{ pop pop 1 } ifelse
+      0 exch FontMatrix transform exch pop
+      def % <FontInfo>
+
+      /UnderlineThickness 2 copy % <FontInfo> /UT <FontInfo> /UT
+      2 copy known
+      { get }{ pop pop 1 } ifelse
+      0 exch FontMatrix transform exch pop
+      def % <FontInfo>
+      pop % -
+    }{ pop pop
+    } ifelse
+
+    currentdict
+  end 
+} bind def
+
+% composite fonts for ASCII-EUC mixed strings
+% Version 1.2 1/31/1990
+% Original Ken'ichi HANDA (handa@etl.go.jp)
+% Modified Norio Katayama (katayama@rd.nacsis.ac.jp),1998
+% Extend & Fix Koji Nakamaru (maru@on.cs.keio.ac.jp), 1999
+% Anyone can freely copy, modify, distribute this program.
+
+/copyfont {	% font-dic extra-entry-count  copyfont  font-dic
+	1 index maxlength add dict begin
+	{	1 index /FID ne 2 index /UniqueID ne and
+		{def} {pop pop} ifelse
+	} forall
+	currentdict
+	end
+} bind def
+
+/compositefont { % ASCIIFontName EUCFontName RomanScale RomanOffset Rot(T/F) compositefont font
+    /RomanRotation exch def
+    /RomanOffset exch def
+    /RomanScale exch def
+    userdict /fixeucfont_dict known not {
+	userdict begin
+	    /fixeucfont_dict 2 dict begin
+		/UpperByteEncoding [
+		    16#00 1 16#20 { pop 0 } for
+		    16#21 1 16#28 { 16#20 sub } for
+		    16#29 1 16#2F { pop 0 } for
+		    16#30 1 16#74 { 16#27 sub } for
+		    16#75 1 16#FF { pop 0 } for
+		] def
+	        /LowerByteEncoding [
+		    16#00 1 16#A0 { pop /.notdef } for
+		    16#A1 1 16#FE { 16#80 sub 16 2 string cvrs
+				    (cXX) dup 1 4 -1 roll
+				    putinterval cvn } for
+		    /.notdef
+		] def
+		currentdict
+	    end def
+	end
+    } if
+    findfont dup /FontType get 0 eq {
+	14 dict begin
+	    %
+	    % 7+8 bit EUC font
+	    %
+	    12 dict begin
+		/EUCFont exch def
+		/FontInfo (7+8 bit EUC font) readonly def
+		/PaintType 0 def
+		/FontType 0 def
+		/FontMatrix matrix def
+		% /FontName
+		/Encoding fixeucfont_dict /UpperByteEncoding get def
+		/FMapType 2 def
+		EUCFont /WMode known
+		{ EUCFont /WMode get /WMode exch def }
+		{ /WMode 0 def } ifelse
+		/FDepVector [
+		    EUCFont /FDepVector get 0 get
+		    [ 16#21 1 16#28 {} for 16#30 1 16#74 {} for ]
+		    {
+			13 dict begin
+			    /EUCFont EUCFont def
+			    /UpperByte exch 16#80 add def	
+			    % /FontName
+			    /FontInfo (EUC lower byte font) readonly def
+			    /PaintType 0 def
+			    /FontType 3 def
+			    /FontMatrix matrix def
+			    /FontBBox {0 0 0 0} def
+			    /Encoding
+				fixeucfont_dict /LowerByteEncoding get def
+			    % /UniqueID
+			    % /WMode
+			    /BuildChar {
+				gsave
+				exch dup /EUCFont get setfont
+				/UpperByte get
+				2 string
+				dup 0 4 -1 roll put
+				dup 1 4 -1 roll put
+				dup stringwidth setcharwidth
+				0 0 moveto show
+				grestore
+			    } bind def
+			    currentdict
+			end
+			/lowerbytefont exch definefont
+		    } forall
+		] def
+		currentdict
+	    end
+	    /eucfont exch definefont
+	    exch
+	    findfont 1 copyfont dup begin
+		RomanRotation {
+			/FontMatrix FontMatrix
+			[ 0 RomanScale neg RomanScale 0 RomanOffset neg 0 ]
+			matrix concatmatrix def
+		}{
+			/FontMatrix FontMatrix
+			[ RomanScale 0 0 RomanScale 0 RomanOffset ] matrix concatmatrix
+			def
+			/CDevProc
+			    {pop pop pop pop 0 exch -1000 exch 2 div 880} def
+		} ifelse
+	    end
+	    /asciifont exch definefont
+	    exch
+	    /FDepVector [ 4 2 roll ] def
+	    /FontType 0 def
+	    /WMode 0 def
+	    /FMapType 4 def
+	    /FontMatrix matrix def
+	    /Encoding [0 1] def
+	    /FontBBox {0 0 0 0} def
+%	    /FontHeight 1.0 def % XXXX
+	    /FontHeight RomanScale 1.0 ge { RomanScale }{ 1.0 } ifelse def
+	    /Descent -0.3 def   % XXXX
+	    currentdict
+	end
+	/tmpfont exch definefont
+	pop
+	/tmpfont findfont
+    }{
+	pop findfont 0 copyfont
+    } ifelse
+} def	
+
+/slantfont {	% FontName slant-degree  slantfont  font'
+    exch findfont 1 copyfont begin
+    [ 1 0 4 -1 roll 1 0 0 ] FontMatrix exch matrix concatmatrix
+    /FontMatrix exch def
+    currentdict
+    end
+} def
+
+% Function print line number (<string> # -)
+/# {
+  gsave
+    sx cw mul neg 2 div 0 rmoveto
+    f# setfont
+    c-show
+  grestore
+} bind def
+
+% -------- Some routines to enlight plain b/w printings ---------
+
+% Underline
+% width --
+/dounderline {
+  currentpoint
+  gsave
+    moveto
+    0 currentfont /Descent get currentfontsize mul rmoveto
+    0 rlineto
+    stroke
+  grestore
+} bind def
+
+% Underline a string
+% string --
+/dounderlinestring {
+  stringwidth pop
+  dounderline
+} bind def
+
+/UL {
+  /ul exch store
+} bind def
+
+% Draw a box of WIDTH wrt current font
+% width --
+/dobox {
+  currentpoint
+  gsave
+    newpath
+    moveto
+    0 currentfont /Descent get currentfontsize mul rmoveto
+    dup 0 rlineto
+    0 currentfont /FontHeight get currentfontsize mul rlineto
+    neg 0 rlineto
+    closepath
+    stroke
+  grestore
+} bind def
+
+/BX {
+  /bx exch store
+} bind def
+
+% Box a string
+% string --
+/doboxstring {
+  stringwidth pop
+  dobox
+} bind def
+
+%
+% ------------- Color routines ---------------
+%
+/FG /setrgbcolor load def
+
+% Draw the background
+% width --
+/dobackground {
+  currentpoint
+  gsave
+    newpath
+    moveto
+    0 currentfont /Descent get currentfontsize mul rmoveto
+    dup 0 rlineto
+    0 currentfont /FontHeight get currentfontsize mul rlineto
+    neg 0 rlineto
+    closepath
+    bgcolor aload pop setrgbcolor
+    fill
+  grestore
+} bind def
+
+% Draw bg for a string
+% string --
+/dobackgroundstring {
+  stringwidth pop
+  dobackground
+} bind def
+
+
+/BG {
+  dup /bg exch store
+  { mark 4 1 roll ] /bgcolor exch store } if
+} bind def
+
+
+/Show {
+  bg { dup dobackgroundstring } if
+  ul { dup dounderlinestring } if
+  bx { dup doboxstring } if
+  show
+} bind def
+
+% Function T(ab), jumps to the n-th tabulation in the current line
+/T {
+  cw mul x0 add
+  bg { dup currentpoint pop sub dobackground } if
+  ul { dup currentpoint pop sub dounderline } if
+  bx { dup currentpoint pop sub dobox } if
+  y0 moveto
+} bind def
+
+% Function n: move to the next line
+/n {
+  /y0 y0 bfs sub store
+  x0 y0 moveto
+} bind def
+
+% Function N: show and move to the next line
+/N {
+  Show
+  /y0 y0 bfs sub store
+  x0 y0 moveto
+} bind def
+
+/S {
+  Show
+} bind def
+
+%%BeginResource: procset a2ps-a2ps-hdr 2.0 2
+%%Copyright: (c) 1988, 89, 90, 91, 92, 93 Miguel Santana
+%%Copyright: (c) 1995, 96, 97, 98 Akim Demaille, Miguel Santana
+% Function title: prints page header.
+% <ct> <rt> <lt> are passed as argument
+/title { 
+  % 1. Draw the background
+  x v get y v get moveto
+  gsave
+    0 th 2 div neg rmoveto 
+    th setlinewidth
+    0.95 setgray
+    pw 0 rlineto stroke
+  grestore
+  % 2. Border it
+  gsave
+    0.7 setlinewidth
+    pw 0 rlineto
+    0 th neg rlineto
+    pw neg 0 rlineto
+    closepath stroke
+  grestore
+  % stk: ct rt lt
+  x v get y v get th sub 1 add moveto
+%%IncludeResource: font Helvetica
+  fHelvetica fnfs 0.8 mul scalefont setfont
+  % 3. The left title
+  gsave
+    dup stringwidth pop fnfs 0.8 mul add exch % leave space took on stack
+    fnfs 0.8 mul hm rmoveto
+    show			% left title
+  grestore
+  exch
+  % stk: ct ltw rt
+  % 4. the right title
+  gsave
+    dup stringwidth pop fnfs 0.8 mul add exch % leave space took on stack
+    dup
+    pw exch stringwidth pop fnfs 0.8 mul add sub
+    hm
+    rmoveto
+    show			% right title
+  grestore
+  % stk: ct ltw rtw
+  % 5. the center title
+  gsave
+    pw 3 1 roll
+    % stk: ct pw ltw rtw
+    3 copy 
+    % Move to the center of the left room
+    sub add 2 div hm rmoveto
+    % What is the available space in here?
+    add sub fnfs 0.8 mul sub fnfs 0.8 mul sub
+    % stk: ct space_left
+%%IncludeResource: font Helvetica-Bold
+  fHelvetica-Bold fnfs scalefont setfont
+    cfshow
+  grestore
+} bind def
+
+% Function border: prints virtual page border
+/border { %def
+  gsave				% print four sides
+    0 setgray
+    x v get y v get moveto
+    0.7 setlinewidth		% of the square
+    pw 0 rlineto
+    0 ph neg rlineto
+    pw neg 0 rlineto
+    closepath stroke
+  grestore
+} bind def
+
+% Function water: prints a water mark in background
+/water { %def
+  gsave
+    scx scy moveto rotate
+%%IncludeResource: font Times-Bold
+  fTimes-Bold 100 scalefont setfont
+    .97 setgray
+    dup stringwidth pop 2 div neg -50 rmoveto
+    show
+  grestore
+} bind def
+
+% Function rhead: prints the right header
+/rhead {  %def
+  lx ly moveto
+  fHelvetica fnfs 0.8 mul scalefont setfont
+  l-show
+} bind def
+
+% Function footer (cf rf lf -> -)
+/footer {
+  fHelvetica fnfs 0.8 mul scalefont setfont
+  dx dy moveto
+  show
+
+  snx sny moveto
+  l-show
+  
+  fnx fny moveto
+  c-show
+} bind def
+%%EndResource
+%%BeginResource: procset a2ps-black+white-Prolog 2.0 1
+
+% Function T(ab), jumps to the n-th tabulation in the current line
+/T { 
+  cw mul x0 add y0 moveto
+} bind def
+
+% Function n: move to the next line
+/n { %def
+  /y0 y0 bfs sub store
+  x0 y0 moveto
+} bind def
+
+% Function N: show and move to the next line
+/N {
+  Show
+  /y0 y0 bfs sub store
+  x0 y0 moveto
+}  bind def
+
+/S {
+  Show
+} bind def
+
+/p {
+  false UL
+  false BX
+  fCourier bfs scalefont setfont
+  Show
+} bind def
+
+/sy {
+  false UL
+  false BX
+  fSymbol bfs scalefont setfont
+  Show
+} bind def
+
+/k {
+  false UL
+  false BX
+  fCourier-Oblique bfs scalefont setfont
+  Show
+} bind def
+
+/K {
+  false UL
+  false BX
+  fCourier-Bold bfs scalefont setfont
+  Show
+} bind def
+
+/c {
+  false UL
+  false BX
+  fCourier-Oblique bfs scalefont setfont
+  Show
+} bind def
+
+/C {
+  false UL
+  false BX
+  fCourier-BoldOblique bfs scalefont setfont
+  Show 
+} bind def
+
+/l {
+  false UL
+  false BX
+  fHelvetica bfs scalefont setfont
+  Show
+} bind def
+
+/L {
+  false UL
+  false BX
+  fHelvetica-Bold bfs scalefont setfont
+  Show 
+} bind def
+
+/str{
+  false UL
+  false BX
+  fTimes-Roman bfs scalefont setfont
+  Show
+} bind def
+
+/e{
+  false UL
+  true BX
+  fHelvetica-Bold bfs scalefont setfont
+  Show
+} bind def
+
+%%EndResource
+%%EndProlog
+%%BeginSetup
+%%IncludeResource: font Courier
+%%IncludeResource: font Courier-Oblique
+%%IncludeResource: font Courier-Bold
+%%IncludeResource: font Times-Roman
+%%IncludeResource: font Symbol
+%%IncludeResource: font Courier-BoldOblique
+%%BeginResource: encoding ISO-8859-1Encoding
+/ISO-8859-1Encoding [
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/space /exclam /quotedbl /numbersign /dollar /percent /ampersand /quoteright 
+/parenleft /parenright /asterisk /plus /comma /minus /period /slash 
+/zero /one /two /three /four /five /six /seven 
+/eight /nine /colon /semicolon /less /equal /greater /question 
+/at /A /B /C /D /E /F /G 
+/H /I /J /K /L /M /N /O 
+/P /Q /R /S /T /U /V /W 
+/X /Y /Z /bracketleft /backslash /bracketright /asciicircum /underscore 
+/quoteleft /a /b /c /d /e /f /g 
+/h /i /j /k /l /m /n /o 
+/p /q /r /s /t /u /v /w 
+/x /y /z /braceleft /bar /braceright /asciitilde /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/space /exclamdown /cent /sterling /currency /yen /brokenbar /section 
+/dieresis /copyright /ordfeminine /guillemotleft /logicalnot /hyphen /registered /macron 
+/degree /plusminus /twosuperior /threesuperior /acute /mu /paragraph /bullet 
+/cedilla /onesuperior /ordmasculine /guillemotright /onequarter /onehalf /threequarters /questiondown 
+/Agrave /Aacute /Acircumflex /Atilde /Adieresis /Aring /AE /Ccedilla 
+/Egrave /Eacute /Ecircumflex /Edieresis /Igrave /Iacute /Icircumflex /Idieresis 
+/Eth /Ntilde /Ograve /Oacute /Ocircumflex /Otilde /Odieresis /multiply 
+/Oslash /Ugrave /Uacute /Ucircumflex /Udieresis /Yacute /Thorn /germandbls 
+/agrave /aacute /acircumflex /atilde /adieresis /aring /ae /ccedilla 
+/egrave /eacute /ecircumflex /edieresis /igrave /iacute /icircumflex /idieresis 
+/eth /ntilde /ograve /oacute /ocircumflex /otilde /odieresis /divide 
+/oslash /ugrave /uacute /ucircumflex /udieresis /yacute /thorn /ydieresis 
+] def
+%%EndResource
+% Initialize page description variables.
+/sh 792 def
+/sw 612 def
+/llx 24 def
+/urx 588 def
+/ury 768 def
+/lly 24 def
+/#copies 1 def
+/th 20.000000 def
+/fnfs 15 def
+/bfs 11.547912 def
+/cw 6.928747 def
+
+% Dictionary for ISO-8859-1 support
+/iso1dict 8 dict begin
+  /fCourier ISO-8859-1Encoding /Courier reencode_font
+  /fCourier-Bold ISO-8859-1Encoding /Courier-Bold reencode_font
+  /fCourier-BoldOblique ISO-8859-1Encoding /Courier-BoldOblique reencode_font
+  /fCourier-Oblique ISO-8859-1Encoding /Courier-Oblique reencode_font
+  /fHelvetica ISO-8859-1Encoding /Helvetica reencode_font
+  /fHelvetica-Bold ISO-8859-1Encoding /Helvetica-Bold reencode_font
+  /fTimes-Bold ISO-8859-1Encoding /Times-Bold reencode_font
+  /fTimes-Roman ISO-8859-1Encoding /Times-Roman reencode_font
+currentdict end def
+/bgcolor [ 0 0 0 ] def
+/bg false def
+/ul false def
+/bx false def
+% The font for line numbering
+/f# /Helvetica findfont bfs .6 mul scalefont def
+/fSymbol /Symbol findfont def
+/hm fnfs 0.25 mul def
+/pw
+   cw 81.400000 mul
+def
+/ph
+   689.410325 th add
+def
+/pmw 0 def
+/pmh 0 def
+/v 0 def
+/x [
+  0
+] def
+/y [
+  pmh ph add 0 mul ph add
+] def
+/scx sw 2 div def
+/scy sh 2 div def
+/snx urx def
+/sny lly 2 add def
+/dx llx def
+/dy sny def
+/fnx scx def
+/fny dy def
+/lx snx def
+/ly ury fnfs 0.8 mul sub def
+/sx 0 def
+/tab 8 def
+/x0 0 def
+/y0 0 def
+%%EndSetup
+
+%%Page: (1) 1
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( ") p
+(walker.h) str
+(") p n
+() N
+(#include) K
+( <stdlib.h>      ) p
+(// malloc) c n
+(#include) K
+( <sys/types.h>   ) p
+(// fstat, open) c n
+(#include) K
+( <sys/stat.h>    ) p
+(// fstat, open) c n
+(#include) K
+( <unistd.h>      ) p
+(// fstat) c n
+(#include) K
+( <fcntl.h>       ) p
+(// open) c n
+(#include) K
+( <sys/syscall.h> ) p
+(// syscall) c n
+(#include) K
+( <stdio.h>       ) p
+(// perror, sprintf) c n
+(#include) K
+( <pwd.h>         ) p
+(// getpwuid) c n
+(#include) K
+( <grp.h>         ) p
+(// getgrgid) c n
+() p n
+(void) k
+( * safe_malloc\(size_t size\) {) p n
+(    ) S
+(void) k
+( * x = malloc\(size\);) p n
+(    ) S
+(if) K
+( \(x == ) p
+(NULL) K
+(\) {) p n
+(        perror\(") S
+(malloc\(\)) str
+("\);) p n
+(        exit\(-1\);) N
+(    }) N
+(    ) S
+(return) K
+( x;) p n
+(}) N
+() N
+(void) k
+( safe_stat\() p
+(const) K
+( ) p
+(char) k
+(* filename, ) p
+(struct) k
+( stat *buf\) {) p n
+(    ) S
+(if) K
+( \( stat\(filename, buf\) != 0 \) {) p n
+(        perror\(") S
+(stat\(\)) str
+("\);) p n
+(        exit\(-1\);) N
+(    }) N
+(}) N
+() N
+(void) k
+( safe_fstat\() p
+(int) k
+( fd, ) p
+(struct) k
+( stat *buf\) {) p n
+(    ) S
+(if) K
+( \( fstat\(fd, buf\) != 0 \) {) p n
+(        perror\(") S
+(fstat\(\)) str
+("\);) p n
+(        exit\(-1\);) N
+(    }) N
+(}) N
+() N
+(void) k
+( safe_lstat\() p
+(const) K
+( ) p
+(char) k
+(* filename, ) p
+(struct) k
+( stat *buf\) {) p n
+(    ) S
+(if) K
+( \( lstat\(filename, buf\) != 0 \) {) p n
+(        perror\(") S
+(lstat\(\)) str
+("\);) p n
+(        exit\(-1\);) N
+(    }) N
+(}) N
+() N
+(int) k
+( safe_open\() p
+(const) K
+( ) p
+(char) k
+( *pathname\) {) p n
+(    ) S
+(int) k
+( f = open\(pathname, WALK_INIT_FLAGS\);) p n
+(    ) S
+(if) K
+( \(f == -1\) {) p n
+(        perror\(pathname\);) N
+(        exit\(-1\);) N
+(    }) N
+(    ) S
+(return) K
+( f;) p n
+(}) N
+() N
+(int) k
+( safe_openat\() p
+(int) k
+( f_base, ) p
+(const) K
+( ) p
+(char) k
+( *pathname\) {) p n
+(    ) S
+(int) k
+( f = openat\(f_base, pathname, WALK_FLAGS\);) p n
+(    ) S
+(if) K
+( \(f == -1\) {) p n
+(        perror\(pathname\);) N
+(        ) S
+(// Don't exit) c n
+(    }) p n
+(    ) S
+(return) K
+( f;) p n
+(}) N
+(functions.c) (Page 1/2) (Sep 23, 15 22:50) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (1/10) (Thursday September 24, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (2) 2
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p n
+(int) k
+( safe_getdents\() p
+(int) k
+( f, ) p
+(char) k
+(* buffer\) {) p n
+(    ) S
+(int) k
+( ret = syscall\(SYS_getdents, f, buffer, WALK_BUFFERSIZE\);) p n
+(    ) S
+(if) K
+( \(ret == -1\) {) p n
+(        perror\(") S
+(getdents\(\)) str
+("\);) p n
+(        exit\(-1\);) N
+(    }) N
+(    ) S
+(return) K
+( ret;) p n
+(}) N
+() N
+(void) k
+( getusrgrp\(uid_t uid, gid_t gid, ) p
+(char) k
+(* usr, ) p
+(char) k
+(* grp\) {) p n
+(    ) S
+(struct) k
+( passwd * p = getpwuid\(uid\);) p n
+(    ) S
+(struct) k
+( group * g  = getgrgid\(gid\);) p n
+() N
+(    ) S
+(if) K
+( \(p != ) p
+(NULL) K
+(\) {) p n
+(        sprintf\(usr, ") S
+(%s) str
+(", p->pw_name\);) p n
+(    } ) S
+(else) K
+( {) p n
+(        sprintf\(usr, ") S
+(%d) str
+(", uid\);) p n
+(    }) N
+() N
+(    ) S
+(if) K
+( \(g != ) p
+(NULL) K
+(\) {) p n
+(        sprintf\(grp, ") S
+(%s) str
+(", g->gr_name\);) p n
+(    } ) S
+(else) K
+( {) p n
+(        sprintf\(grp, ") S
+(%d) str
+(", gid\);) p n
+(    }) N
+(}) N
+() N
+(void) k
+( getsizeid\() p
+(struct) k
+( stat * s, ) p
+(char) k
+(* sizeid\) {) p n
+(    ) S
+(switch) K
+( \(s->st_mode & S_IFMT\) {) p n
+(        ) S
+(case) K
+( S_IFCHR:) p n
+(        ) S
+(case) K
+( S_IFBLK:) p n
+(            sprintf\(sizeid, ") S
+(0x%x) str
+(", \() p
+(unsigned) k
+(\) s->st_rdev\);) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(default) K
+(:) p n
+(            sprintf\(sizeid, ") S
+(%d) str
+(", \() p
+(int) k
+(\) s->st_size\);) p n
+(            ) S
+(break) K
+(;) p n
+(    }) N
+(}) N
+() N
+(void) k
+( getlinkcontents\() p
+(struct) k
+( stat * s, ) p
+(const) K
+( ) p
+(char) k
+(* path, ) p
+(char) k
+(* buf, size_t bufsiz) p n
+(\) {) N
+(    ) S
+(if) K
+( \(\(s->st_mode & S_IFMT\) == S_IFLNK\) {) p n
+(        sprintf\(buf, ") S
+(-> ) str
+("\);) p n
+(        size_t ret = readlink\(path, &buf[3], bufsiz-3\);) N
+(        ) S
+(if) K
+( \(ret == -1\) {) p n
+(            perror\(") S
+(readlink\(\)) str
+("\);) p n
+(            exit\(-1\);) N
+(        }) N
+(        ) S
+(if) K
+( \(ret + 3 < bufsiz\)) p n
+(            buf[ret + 3] = ') S
+(\\0) str
+(';) p n
+(        ) S
+(else) K n
+(            buf[bufsiz-1] = ') p
+(\\0) str
+(';) p n
+(    } ) S
+(else) K
+( {) p n
+(        buf[0] = ') S
+(\\0) str
+(';) p n
+(    }) N
+(}) S
+(functions.c) (Page 2/2) (Sep 23, 15 22:50) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Thursday September 24, 2015) (2/10) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 3
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( ") p
+(walker.h) str
+(") p n
+() N
+(#include) K
+( <sys/types.h>) p n
+(#include) K
+( <sys/stat.h>) p n
+(#include) K
+( <unistd.h>) p n
+() N
+(void) k
+( strmode\(mode_t mode, ) p
+(char) k
+(* modestr\) {) p n
+() N
+(    ) S
+(/* Type */) c n
+(    ) p
+(switch) K
+( \(mode & S_IFMT\) {) p n
+(        ) S
+(case) K
+( S_IFREG: ) p
+(// Regular) c n
+(            *modestr++ = ') p
+(-) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_IFDIR:  ) p
+(// Directory) c n
+(            *modestr++ = ') p
+(d) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_IFCHR:  ) p
+(// Character device) c n
+(            *modestr++ = ') p
+(c) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_IFBLK:  ) p
+(// Block Device) c n
+(            *modestr++ = ') p
+(b) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_IFIFO:  ) p
+(// Named pipe) c n
+(            *modestr++ = ') p
+(p) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_IFLNK:  ) p
+(// Symlink) c n
+(            *modestr++ = ') p
+(l) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_IFSOCK: ) p
+(// Socket) c n
+(            *modestr++ = ') p
+(s) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(default) K
+(:       ) p
+(// Otherwise...) c n
+(            *modestr++ = ') p
+(?) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(    }) N
+() N
+(    ) S
+(/* Owner */) c n
+(    *modestr++ = \(mode & S_IRUSR\) ? ') p
+(r) str
+(' : ') p
+(-) str
+(';) p n
+() N
+(    *modestr++ = \(mode & S_IWUSR\) ? ') S
+(w) str
+(' : ') p
+(-) str
+(';) p n
+() N
+(    ) S
+(switch) K
+( \(mode & \(S_IXUSR | S_ISUID\)\) {) p n
+(        ) S
+(case) K
+( S_IXUSR:) p n
+(            *modestr++ = ') S
+(x) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( 0:) p n
+(            *modestr++ = ') S
+(-) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_ISUID:) p n
+(            *modestr++ = ') S
+(S) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_IXUSR | S_ISUID:) p n
+(            *modestr++ = ') S
+(s) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(    }) N
+() N
+(    ) S
+(/* Group */) c n
+(    *modestr++ = \(mode & S_IRGRP\) ? ') p
+(r) str
+(' : ') p
+(-) str
+(';) p n
+() N
+(strmode.c) (Page 1/2) (Sep 13, 15 15:44) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (3/10) (Thursday September 24, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (2) 4
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    *modestr++ = \(mode & S_IWGRP\) ? ') p
+(w) str
+(' : ') p
+(-) str
+(';) p n
+() N
+(    ) S
+(switch) K
+( \(mode & \(S_IXGRP | S_ISGID\)\) {) p n
+(        ) S
+(case) K
+( S_IXGRP:) p n
+(            *modestr++ = ') S
+(x) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( 0:) p n
+(            *modestr++ = ') S
+(-) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_ISGID:) p n
+(            *modestr++ = ') S
+(S) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_IXGRP | S_ISGID:) p n
+(            *modestr++ = ') S
+(s) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(    }) N
+() N
+(    ) S
+(/* Other */) c n
+(    *modestr++ = \(mode & S_IROTH\) ? ') p
+(r) str
+(' : ') p
+(-) str
+(';) p n
+() N
+(    *modestr++ = \(mode & S_IWOTH\) ? ') S
+(w) str
+(' : ') p
+(-) str
+(';) p n
+() N
+(    ) S
+(switch) K
+( \(mode & \(S_IXOTH | S_ISVTX\)\) {) p n
+(        ) S
+(case) K
+( S_IXOTH:) p n
+(            *modestr++ = ') S
+(x) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( 0:) p n
+(            *modestr++ = ') S
+(-) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_ISVTX:) p n
+(            *modestr++ = ') S
+(T) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(        ) S
+(case) K
+( S_IXOTH | S_ISVTX:) p n
+(            *modestr++ = ') S
+(t) str
+(';) p n
+(            ) S
+(break) K
+(;) p n
+(    }) N
+(    *modestr = ') S
+(\\0) str
+(';) p n
+(}) S
+(strmode.c) (Page 2/2) (Sep 13, 15 15:44) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Thursday September 24, 2015) (4/10) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 5
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( ") p
+(walker.h) str
+(") p n
+() N
+(#include) K
+( <stdio.h>  ) p
+(// printf) c n
+(#include) K
+( <string.h> ) p
+(// strlen) c n
+(#include) K
+( <unistd.h> ) p
+(// close) c n
+(#include) K
+( <stdlib.h> ) p
+(// free) c n
+(#include) K
+( <dirent.h> ) p
+(// DT_ defines) c n
+(#include) K
+( <time.h>   ) p
+(// ctime) c n
+() p n
+(void) k
+( init_walk\() p
+(char) k
+(* filename, ) p
+(int) k
+( stayOnDev, ino_t target\) {    ) p n
+(    ) S
+(// Remove unnecessary slash) c n
+(    size_t filelen = strlen\(filename\);) p n
+(    ) S
+(if) K
+( \(filename[filelen-1] == ') p
+(/) str
+('\)) p n
+(        filename[filelen-1] = ') S
+(\\0) str
+(';) p n
+() N
+(    ) S
+(// Open directory and parents) c n
+(    ) p
+(int) k
+( f        = safe_open\(filename\);) p n
+() N
+(    ) S
+(// Stat) c n
+(    ) p
+(struct) k
+( stat * parentstat = safe_malloc\() p
+(sizeof) K
+(\() p
+(struct) k
+( stat\)\);) p n
+(    ) S
+(struct) k
+( stat * thisstat   = safe_malloc\() p
+(sizeof) K
+(\() p
+(struct) k
+( stat\)\);) p n
+() N
+(    ) S
+(// inode list) c n
+(    ino_t ino_list[WALK_MAXDEPTH+1] = {0};) p n
+() N
+(    ) S
+(// Get inodes) c n
+(    safe_fstat\(f, thisstat\);) p n
+(    ino_t this_ino = thisstat->st_ino;) N
+() N
+(    ) S
+(// For option -x) c n
+(    dev_t this_dev;) p n
+(    ) S
+(if) K
+( \(stayOnDev\)) p n
+(        this_dev = thisstat->st_dev;) N
+(    ) S
+(else) K n
+(        this_dev = 0;) p n
+() N
+(    ) S
+(// Free stat structs) c n
+(    free\(parentstat\);) p n
+(    free\(thisstat\);) N
+() N
+(    ) S
+(// Walk!) c n
+(    recursive_walk\(filename, this_ino, this_dev, target, f, 0, ino_list\);) p n
+() N
+(    ) S
+(// Close directory) c n
+(    close\(f\);) p n
+(}) N
+() N
+(void) k
+( recursive_walk\() p
+(const) K
+( ) p
+(char) k
+(* dirname,) p n
+(                    ino_t       this_ino,) N
+(                    dev_t       this_dev,) N
+(                    ino_t       target,) N
+(                    ) S
+(int) k
+(         f,) p n
+(                    ) S
+(unsigned) k
+(    depth,) p n
+(                    ino_t*      ino_list \) {) N
+() N
+(    ) S
+(if) K
+( \(depth > WALK_MAXDEPTH\)) p n
+(        ) S
+(return) K
+(;) p n
+() N
+(    ino_list[depth]   = this_ino;) N
+(walk.c) (Page 1/3) (Sep 23, 15 23:24) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (5/10) (Thursday September 24, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (2) 6
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    ino_list[depth+1] = 0;) p n
+() N
+(    ) S
+(char) k
+(* buffer = safe_malloc\(WALK_BUFFERSIZE\);) p n
+() N
+(    ) S
+(int) k
+( ret;) p n
+(    ) S
+(struct) k
+( linux_dirent * d;) p n
+(    size_t index;) N
+(    ) S
+(do) K
+( {) p n
+(        ret = safe_getdents\(f, buffer\);) N
+(        ) S
+(for) K
+( \(index = 0; index < ret; \) {) p n
+(            d = \() S
+(struct) k
+( linux_dirent *\) \(buffer + index\);) p n
+(            ) S
+(if) K
+( \( strcmp\(d->d_name, ") p
+(..) str
+("\) && strcmp\(d->d_name, ") p
+(.) str
+("\) \) {) p n
+(                ) S
+(int) k
+( f_next = safe_openat\(f, d->d_name\);) p n
+(                ) S
+(if) K
+( \(f_next != -1\) {) p n
+(                    ) S
+(char) k
+(* nextfile = safe_malloc\(WALK_PATHLEN\);) p n
+(                    sprintf\(nextfile, ") S
+(%s/%s) str
+(", dirname, d->d_name\);) p n
+(                    ) N
+(                    ) S
+(int) k
+( ret   = stat_file\(nextfile, f_next, this_dev, target\);) p n
+(                    ) S
+(int) k
+( loop  = is_loop\(ino_list, d->d_ino\);) p n
+(                    ) S
+(int) k
+( isdir = \(\(\() p
+(char) k
+(*\)d\)[d->d_reclen-1] == DT_DIR\);) p n
+(                    ) N
+(                    ) S
+(if) K
+( \(loop\)) p n
+(                        fprintf\(stderr, ") S
+(walker: Found loop in filesystem.  Skipping already walk) str n
+(ed directory %s\\n) S
+(", d->d_name\);) p n
+(                    ) N
+(                    ) S
+(if) K
+( \( !loop && ret && isdir\)) p n
+(                        recursive_walk\(nextfile, d->d_ino, this_dev, target, f_n) N
+(ext, depth + 1, ino_list\);) N
+(                    free\(nextfile\);) N
+(                    close\(f_next\);) N
+(                }) N
+(            }) N
+(            index += d->d_reclen;) N
+(        }) N
+(    } ) S
+(while) K
+( \(ret > 0\);) p n
+(    free\(buffer\);) N
+(}) N
+() N
+(int) k
+( is_loop\(ino_t *ino_list, ino_t this_ino\) {) p n
+(    ) S
+(for) K
+( \(size_t i = 0; i < WALK_MAXDEPTH; i++\) {) p n
+(        ) S
+(if) K
+( \(ino_list[i] == this_ino\) {) p n
+(            ) S
+(return) K
+( 1;) p n
+(        }) N
+(        ) S
+(if) K
+( \(ino_list[i] == 0\)) p n
+(            ) S
+(continue) K
+(;) p n
+(    }) N
+(    ) S
+(return) K
+( 0;) p n
+(}) N
+() N
+(int) k
+( stat_file\() p
+(const) K
+( ) p
+(char) k
+(* filename, ) p
+(int) k
+( f_next, dev_t this_dev, ino_t target\) {) p n
+(    ) S
+(struct) k
+( stat s, t;) p n
+(    safe_lstat\(filename, &s\);) N
+(    safe_stat\(filename, &t\);) N
+(    ) S
+(char) k
+( perms    [12];) p n
+(    ) S
+(char) k
+( user     [17];) p n
+(    ) S
+(char) k
+( group    [17];) p n
+(    ) S
+(char) k
+( size     [16];) p n
+(    ) S
+(char) k
+( linkpath [WALK_PATHLEN];) p n
+() N
+(walk.c) (Page 2/3) (Sep 23, 15 23:24) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Thursday September 24, 2015) (6/10) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (3) 7
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    strmode\(s.st_mode, perms\);) p n
+(    getusrgrp\(s.st_uid, s.st_gid, user, group\);) N
+(    getsizeid\(&s, size\);) N
+(    ) S
+(char) k
+(* mtime = ctime\(&s.st_mtime\);) p n
+(    mtime[24] = ') S
+(\\0) str
+(';) p n
+() N
+(    getlinkcontents\(&s, filename, linkpath, WALK_PATHLEN\);) N
+() N
+(    ) S
+(if) K
+( \( target == 0 || \(t.st_ino == target && t.st_ino != s.st_ino\) \)) p n
+(        printf\( ") S
+(%04o/%-10d %s  %-5d %-12s %-12s %-16s %s %s %s\\n) str
+(", ) p n
+(            \() S
+(unsigned) k
+(\) s.st_dev,) p n
+(            \() S
+(int) k
+(\)      s.st_ino,) p n
+(                       perms,) N
+(            \() S
+(int) k
+(\)      s.st_nlink,) p n
+(                       user,) N
+(                       group,) N
+(                       size,) N
+(                       mtime,) N
+(                       filename,) N
+(                       linkpath \);) N
+(    ) N
+(    ) S
+(if) K
+( \( \(this_dev == 0\) || \(this_dev == s.st_dev\) \) {) p n
+(        ) S
+(return) K
+( 1;) p n
+(    } ) S
+(else) K
+( {) p n
+(        printf\( ") S
+(walker \(-x\): not crossing mountpoint at %s\\n) str
+(", filename\);) p n
+(        ) S
+(return) K
+( 0;) p n
+(    }) N
+(}) S
+(walk.c) (Page 3/3) (Sep 23, 15 23:24) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (7/10) (Thursday September 24, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 8
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( ") p
+(walker.h) str
+(") p n
+() N
+(#include) K
+( <getopt.h>    ) p
+(// getopt) c n
+() p n
+(int) k
+( main\() p
+(int) k
+( argc, ) p
+(char) k
+(* argv[]\) {) p n
+(    ) S
+(int) k
+( c;) p n
+(    ino_t target = 0;) N
+(    ) S
+(int) k
+( stayOnDev = 0;) p n
+(    ) S
+(struct) k
+( stat t;) p n
+() N
+(    ) S
+(while) K
+( \(\(c = getopt\(argc, argv, ") p
+(+l:x) str
+("\)\) != -1\) {) p n
+(        ) S
+(switch) K
+( \(c\) {) p n
+(            ) S
+(case) K
+( ') p
+(l) str
+(':) p n
+(                safe_stat\(optarg, &t\);) N
+(                target = t.st_ino;) N
+(                ) S
+(break) K
+(;) p n
+(            ) S
+(case) K
+( ') p
+(x) str
+(':) p n
+(                stayOnDev = 1;) N
+(                ) S
+(break) K
+(;) p n
+(            ) S
+(case) K
+( ') p
+(?) str
+(':) p n
+(                ) S
+(break) K
+(;) p n
+(        }) N
+(    }) N
+(    ) S
+(if) K
+( \(optind < argc\)) p n
+(        init_walk\(argv[optind], stayOnDev, target\);) N
+(    ) S
+(else) K n
+(        init_walk\(") p
+(.) str
+(", stayOnDev, target\);) p n
+(}) S
+(walker.c) (Page 1/1) (Sep 23, 15 22:52) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Thursday September 24, 2015) (8/10) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 9
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#ifndef) K
+( WALKER_H) p n
+(#define) K
+( WALKER_H) p n
+() N
+(#define) K
+( _GNU_SOURCE) p n
+() N
+(#include) K
+( <sys/types.h>) p n
+(#include) K
+( <sys/stat.h>) p n
+() N
+(#define) K
+( WALK_INIT_FLAGS O_RDONLY | O_NOATIME | O_DIRECTORY) p n
+(#define) K
+( WALK_FLAGS      O_RDONLY | O_NOATIME | O_NONBLOCK) p n
+(#define) K
+( WALK_BUFFERSIZE 1024) p n
+(#define) K
+( WALK_MAXDEPTH   1024) p n
+(#define) K
+( WALK_PATHLEN    1024) p n
+() N
+(struct) k
+( linux_dirent {) p n
+(    ) S
+(unsigned) k
+( ) p
+(long) k
+(  d_ino;     ) p
+(/* Inode number */) c n
+(    ) p
+(unsigned) k
+( ) p
+(long) k
+(  d_off;     ) p
+(/* Offset to next linux_dirent */) c n
+(    ) p
+(unsigned) k
+( ) p
+(short) k
+( d_reclen;  ) p
+(// Length of this linux_dirent ) c n
+(    ) p
+(char) k
+(           d_name[];  ) p
+(/* Filename \(null-terminated\) */) c n
+(    ) p
+(/*) c n
+(    char           pad;       // Zero padding byte) N
+(    char           d_type;    // File type) N
+(    */) N
+(};) p n
+() N
+(/* Error handling wrappers for resource acquisition */) c n
+() p n
+(void) k
+( * safe_malloc\(size_t size\);) p n
+() N
+(void) k
+(   safe_stat\() p
+(const) K
+( ) p
+(char) k
+(* filename, ) p
+(struct) k
+( stat *buf\);) p n
+() N
+(void) k
+(   safe_fstat\() p
+(int) k
+( fd, ) p
+(struct) k
+( stat *buf\);) p n
+() N
+(void) k
+(   safe_lstat\() p
+(const) K
+( ) p
+(char) k
+(* filename, ) p
+(struct) k
+( stat *buf\);) p n
+() N
+(int) k
+(    safe_open\() p
+(const) K
+( ) p
+(char) k
+( *pathname\);) p n
+() N
+(int) k
+(    safe_openat\() p
+(int) k
+( f_base, ) p
+(const) K
+( ) p
+(char) k
+( *pathname\);) p n
+() N
+(int) k
+(    safe_getdents\() p
+(int) k
+( f, ) p
+(char) k
+(* buffer\);) p n
+() N
+(/* strmode, similar to BSD or other systems */) c n
+() p n
+(void) k
+(   strmode\(mode_t mode, ) p
+(char) k
+(* p\);) p n
+() N
+(/* get names from UID and GID */) c n
+() p n
+(void) k
+(   getusrgrp\(uid_t uid, gid_t gid, ) p
+(char) k
+(* usr, ) p
+(char) k
+(* grp\);) p n
+() N
+(/* get either size or device id of file */) c n
+() p n
+(void) k
+(   getsizeid\() p
+(struct) k
+( stat * s, ) p
+(char) k
+(* sizeid\);) p n
+() N
+(/* check if symlink and get contents */) c n
+() p n
+(void) k
+(   getlinkcontents\() p
+(struct) k
+( stat * s, ) p
+(const) K
+( ) p
+(char) k
+(* path, ) p
+(char) k
+(* buf, size_t bufs) p n
+(iz\);) N
+() N
+(/* Path walk functions */) c n
+(walker.h) (Page 1/2) (Sep 24, 15 0:12) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (9/10) (Thursday September 24, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (2) 10
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p n
+(void) k
+(   init_walk\() p
+(char) k
+(* filename, ) p
+(int) k
+( stayOnDev, ino_t target\);) p n
+() N
+(void) k
+(   recursive_walk\() p
+(const) K
+( ) p
+(char) k
+(* dirname,) p n
+() S 8 T (                  ino_t       thisino,) N
+() S 8 T (                  dev_t       this_dev,) N
+() S 8 T (                  ino_t       target,) N
+() S 8 T (                  ) S
+(int) k
+(         f,) p n
+() S 8 T (                  ) S
+(unsigned) k
+(    depth,) p n
+() S 8 T (                  ino_t*      ino_list \);) N
+() N
+(int) k
+(    is_loop\(ino_t *ino_list, ino_t this_ino\);) p n
+() N
+(int) k
+(    stat_file\() p
+(const) K
+( ) p
+(char) k
+(* filename, ) p
+(int) k
+( f_next, dev_t this_dev, ino_t target\)) p n
+(;) N
+() N
+(#endif) K
+( ) p
+(/* WALKER_H */) c
+(walker.h) (Page 2/2) (Sep 24, 15 0:12) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Thursday September 24, 2015) (10/10) footer
+end % of iso1dict
+pagesave restore
+showpage
+
+%%Trailer
+end
+%%EOF
