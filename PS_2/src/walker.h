@@ -23,10 +23,11 @@ struct linux_dirent {
     */
 };
 
-
 /* Error handling wrappers for resource acquisition */
 
 void * safe_malloc(size_t size);
+
+void   safe_stat(const char* filename, struct stat *buf);
 
 void   safe_fstat(int fd, struct stat *buf);
 
@@ -56,12 +57,18 @@ void   getlinkcontents(struct stat * s, const char* path, char* buf, size_t bufs
 
 /* Path walk functions */
 
-void   init_walk(char* filename);
+void   init_walk(char* filename, int stayOnDev, ino_t target);
 
-void   recursive_walk(const char* dirname, ino_t thisino, ino_t parentino, int f, unsigned depth, ino_t * ino_list);
+void   recursive_walk(const char* dirname,
+	                  ino_t       thisino,
+	                  dev_t       this_dev,
+	                  ino_t       target,
+	                  int         f,
+	                  unsigned    depth,
+	                  ino_t*      ino_list );
 
 int    is_loop(ino_t *ino_list, ino_t this_ino);
 
-void   printstat(const char* filename, int f_next);
+int    stat_file(const char* filename, int f_next, dev_t this_dev, ino_t target);
 
 #endif /* WALKER_H */

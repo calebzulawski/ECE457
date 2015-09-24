@@ -19,6 +19,13 @@ void * safe_malloc(size_t size) {
     return x;
 }
 
+void safe_stat(const char* filename, struct stat *buf) {
+    if ( stat(filename, buf) != 0 ) {
+        perror("stat()");
+        exit(-1);
+    }
+}
+
 void safe_fstat(int fd, struct stat *buf) {
     if ( fstat(fd, buf) != 0 ) {
         perror("fstat()");

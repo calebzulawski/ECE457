@@ -7,7 +7,7 @@
 #include <dirent.h> // DT_ defines
 #include <time.h>   // ctime
 
-void init_walk(char* filename) {
+void init_walk(char* filename, int stayOnDev, ino_t target) {    
     // Remove unnecessary slash
     size_t filelen = strlen(filename);
     if (filename[filelen-1] == '/')
@@ -15,7 +15,6 @@ void init_walk(char* filename) {
 
     // Open directory and parents
     int f        = safe_open(filename);
-    int f_parent = safe_openat(f,"..");
 
     // Stat
     struct stat * parentstat = safe_malloc(sizeof(struct stat));
@@ -25,25 +24,35 @@ void init_walk(char* filename) {
     ino_t ino_list[WALK_MAXDEPTH+1] = {0};
 
     // Get inodes
-    safe_fstat(f_parent, parentstat);
-    close(f_parent);
-    ino_t parent_ino = parentstat->st_ino; 
-
     safe_fstat(f, thisstat);
     ino_t this_ino = thisstat->st_ino;
+
+    // For option -x
+    dev_t this_dev;
+    if (stayOnDev)
+        this_dev = thisstat->st_dev;
+    else
+        this_dev = 0;
 
     // Free stat structs
     free(parentstat);
     free(thisstat);
 
     // Walk!
-    recursive_walk(filename, this_ino, parent_ino, f, 0, ino_list);
+    recursive_walk(filename, this_ino, this_dev, target, f, 0, ino_list);
 
     // Close directory
     close(f);
 }
 
-void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f, unsigned depth, ino_t * ino_list) {
+void recursive_walk(const char* dirname,
+                    ino_t       this_ino,
+                    dev_t       this_dev,
+                    ino_t       target,
+                    int         f,
+                    unsigned    depth,
+                    ino_t*      ino_list ) {
+
     if (depth > WALK_MAXDEPTH)
         return;
 
@@ -59,17 +68,21 @@ void recursive_walk(const char* dirname, ino_t this_ino, ino_t parent_ino, int f
         ret = safe_getdents(f, buffer);
         for (index = 0; index < ret; ) {
             d = (struct linux_dirent *) (buffer + index);
-            if ( d->d_ino != this_ino && d->d_ino != parent_ino ) {
+            if ( strcmp(d->d_name, "..") && strcmp(d->d_name, ".") ) {
                 int f_next = safe_openat(f, d->d_name);
                 if (f_next != -1) {
                     char* nextfile = safe_malloc(WALK_PATHLEN);
                     sprintf(nextfile, "%s/%s", dirname, d->d_name);
-                    printstat(nextfile, f_next);
-                    int loop = is_loop(ino_list, d->d_ino);
+                    
+                    int ret   = stat_file(nextfile, f_next, this_dev, target);
+                    int loop  = is_loop(ino_list, d->d_ino);
+                    int isdir = (((char*)d)[d->d_reclen-1] == DT_DIR);
+                    
                     if (loop)
                         fprintf(stderr, "walker: Found loop in filesystem.  Skipping already walked directory %s\n", d->d_name);
-                    if ( (((char*)d)[d->d_reclen-1] == DT_DIR) && !loop)
-                        recursive_walk(nextfile, d->d_ino, this_ino, f_next, depth + 1, ino_list);
+                    
+                    if ( !loop && ret && isdir)
+                        recursive_walk(nextfile, d->d_ino, this_dev, target, f_next, depth + 1, ino_list);
                     free(nextfile);
                     close(f_next);
                 }
@@ -91,9 +104,10 @@ int is_loop(ino_t *ino_list, ino_t this_ino) {
     return 0;
 }
 
-void printstat(const char* filename, int f_next) {
-    struct stat s;
+int stat_file(const char* filename, int f_next, dev_t this_dev, ino_t target) {
+    struct stat s, t;
     safe_lstat(filename, &s);
+    safe_stat(filename, &t);
     char perms    [12];
     char user     [17];
     char group    [17];
@@ -108,15 +122,23 @@ void printstat(const char* filename, int f_next) {
 
     getlinkcontents(&s, filename, linkpath, WALK_PATHLEN);
 
-    printf( "%04o/%-10d %s  %-5d %-12s %-12s %-16s %s %s %s\n", 
-        (unsigned) s.st_dev,
-        (int)      s.st_ino,
-                   perms,
-        (int)      s.st_nlink,
-                   user,
-                   group,
-                   size,
-                   mtime,
-                   filename,
-                   linkpath );
+    if ( target == 0 || (t.st_ino == target && t.st_ino != s.st_ino) )
+        printf( "%04o/%-10d %s  %-5d %-12s %-12s %-16s %s %s %s\n", 
+            (unsigned) s.st_dev,
+            (int)      s.st_ino,
+                       perms,
+            (int)      s.st_nlink,
+                       user,
+                       group,
+                       size,
+                       mtime,
+                       filename,
+                       linkpath );
+    
+    if ( (this_dev == 0) || (this_dev == s.st_dev) ) {
+        return 1;
+    } else {
+        printf( "walker (-x): not crossing mountpoint at %s\n", filename);
+        return 0;
+    }
 }
