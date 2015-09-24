@@ -7,7 +7,7 @@
 #include <dirent.h> // DT_ defines
 #include <time.h>   // ctime
 
-void init_walk(char* filename, int stayOnDev, ino_t target) {    
+void init_walk(char* filename, int stayOnDev, ino_t target, uid_t uid) {    
     // Remove unnecessary slash
     size_t filelen = strlen(filename);
     if (filename[filelen-1] == '/')
@@ -17,7 +17,6 @@ void init_walk(char* filename, int stayOnDev, ino_t target) {
     int f        = safe_open(filename);
 
     // Stat
-    struct stat * parentstat = safe_malloc(sizeof(struct stat));
     struct stat * thisstat   = safe_malloc(sizeof(struct stat));
 
     // inode list
@@ -35,11 +34,10 @@ void init_walk(char* filename, int stayOnDev, ino_t target) {
         this_dev = 0;
 
     // Free stat structs
-    free(parentstat);
     free(thisstat);
 
     // Walk!
-    recursive_walk(filename, this_ino, this_dev, target, f, 0, ino_list);
+    recursive_walk(filename, this_ino, this_dev, uid, target, f, 0, ino_list);
 
     // Close directory
     close(f);
@@ -48,6 +46,7 @@ void init_walk(char* filename, int stayOnDev, ino_t target) {
 void recursive_walk(const char* dirname,
                     ino_t       this_ino,
                     dev_t       this_dev,
+                    uid_t       uid,
                     ino_t       target,
                     int         f,
                     unsigned    depth,
@@ -74,7 +73,7 @@ void recursive_walk(const char* dirname,
                     char* nextfile = safe_malloc(WALK_PATHLEN);
                     sprintf(nextfile, "%s/%s", dirname, d->d_name);
                     
-                    int ret   = stat_file(nextfile, f_next, this_dev, target);
+                    int ret   = stat_file(nextfile, f_next, this_dev, target, uid);
                     int loop  = is_loop(ino_list, d->d_ino);
                     int isdir = (((char*)d)[d->d_reclen-1] == DT_DIR);
                     
@@ -82,7 +81,7 @@ void recursive_walk(const char* dirname,
                         fprintf(stderr, "walker: Found loop in filesystem.  Skipping already walked directory %s\n", d->d_name);
                     
                     if ( !loop && ret && isdir)
-                        recursive_walk(nextfile, d->d_ino, this_dev, target, f_next, depth + 1, ino_list);
+                        recursive_walk(nextfile, d->d_ino, this_dev, uid, target, f_next, depth + 1, ino_list);
                     free(nextfile);
                     close(f_next);
                 }
@@ -104,7 +103,7 @@ int is_loop(ino_t *ino_list, ino_t this_ino) {
     return 0;
 }
 
-int stat_file(const char* filename, int f_next, dev_t this_dev, ino_t target) {
+int stat_file(const char* filename, int f_next, dev_t this_dev, ino_t target, uid_t uid) {
     struct stat s, t;
     safe_lstat(filename, &s);
     safe_stat(filename, &t);
@@ -122,7 +121,7 @@ int stat_file(const char* filename, int f_next, dev_t this_dev, ino_t target) {
 
     getlinkcontents(&s, filename, linkpath, WALK_PATHLEN);
 
-    if ( target == 0 || (t.st_ino == target && t.st_ino != s.st_ino) )
+    if ( ( target == 0 || (t.st_ino == target && t.st_ino != s.st_ino) ) && ( uid == -1 || (s.st_uid == uid ) ) )
         printf( "%04o/%-10d %s  %-5d %-12s %-12s %-16s %s %s %s\n", 
             (unsigned) s.st_dev,
             (int)      s.st_ino,
