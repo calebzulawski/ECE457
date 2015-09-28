@@ -21,7 +21,7 @@ void bail(const char * msg) {
 }
 
 int safe_open(const char * file, int flags) {
-	int f = open(file, flags);
+	int f = open(file, flags, 0644);
 	if (f == -1) {
 		fprintf(stderr, "Could not open %s: %s\n", file, strerror(errno));
 		exit(-1);
@@ -31,7 +31,21 @@ int safe_open(const char * file, int flags) {
 
 int main( int argc, char* argv[], char *envp[] ) {
 
-	FILE * instream = stdin;
+	FILE * instream;
+	int prompt;
+
+	if ( argc == 1 ) {
+		instream = stdin;
+		prompt = 1;
+	}
+	if ( argc == 2 ) {
+		int f = safe_open(argv[1], O_RDONLY);
+		instream = fdopen(f, "r");
+		prompt = 0;
+	}
+	else {
+		fprintf(stderr, "mysh: too many options");
+	}
 
 	while(1) {
 		char   command   [STRSIZ] = {0};
@@ -46,7 +60,9 @@ int main( int argc, char* argv[], char *envp[] ) {
 		clock_t time1, time2;
 		float realt, usert, syst;
 
-		printf("$ ");
+		if (prompt)
+			printf("$ ");
+		
 		if (!fgets(command, STRSIZ, instream)) {
 			printf("\n");
 			exit(0);
