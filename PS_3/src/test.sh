@@ -1,5 +1,6 @@
 #! mysh
-ls >out1
+ls >outls
+grep mysh.c outls >out1
 chmod -r out1
 
 #this comment is ignored

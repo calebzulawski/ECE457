@@ -109,8 +109,7 @@ int main( int argc, char* argv[], char *envp[] ) {
 			if (!strncmp(tokenized[i], "2>>", 3)) {
 				stderr_fork = open(&tokenized[i][3], O_WRONLY | O_CREAT | O_APPEND, 0644);
 				if (stderr_fork == -1) {
-					fprintf(stderr, "Could not open %s\n", &tokenized[i][3]);
-					perror("open()");
+					fprintf(stderr, "Could not open %s: %s\n", &tokenized[i][3], strerror(errno));
 					returnVal = -1;
 					continue;
 				}
@@ -118,8 +117,7 @@ int main( int argc, char* argv[], char *envp[] ) {
 			} else if (!strncmp(tokenized[i], "2>", 2)) {
 				stderr_fork = open(&tokenized[i][2], O_WRONLY | O_CREAT | O_TRUNC, 0644);
 				if (stderr_fork == -1) {
-					fprintf(stderr, "Could not open %s\n", &tokenized[i][2]);
-					perror("open()");
+					fprintf(stderr, "Could not open %s: %s\n", &tokenized[i][2], strerror(errno));
 					returnVal = -1;
 					continue;
 				}
@@ -127,8 +125,7 @@ int main( int argc, char* argv[], char *envp[] ) {
 			} else if (!strncmp(tokenized[i], ">>", 2)) {
 				stdout_fork = open(&tokenized[i][2], O_WRONLY | O_CREAT | O_APPEND, 0644);
 				if (stdout_fork == -1) {
-					fprintf(stderr, "Could not open %s\n", &tokenized[i][2]);
-					perror("open()");
+					fprintf(stderr, "Could not open %s: %s\n", &tokenized[i][2], strerror(errno));
 					returnVal = -1;
 					continue;
 				}
@@ -136,8 +133,7 @@ int main( int argc, char* argv[], char *envp[] ) {
 			} else if (!strncmp(tokenized[i], ">", 1)) {
 				stdout_fork = open(&tokenized[i][1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
 				if (stdout_fork == -1) {
-					fprintf(stderr, "Could not open %s\n", &tokenized[i][1]);
-					perror("open()");
+					fprintf(stderr, "Could not open %s: %s\n", &tokenized[i][1], strerror(errno));
 					returnVal = -1;
 					continue;
 				}
@@ -145,8 +141,7 @@ int main( int argc, char* argv[], char *envp[] ) {
 			} else if (!strncmp(tokenized[i], "<", 1)) {
 				stdin_fork = open(&tokenized[i][1], O_RDONLY, 0644);
 				if (stdin_fork == -1) {
-					fprintf(stderr, "Could not open %s\n", &tokenized[i][1]);
-					perror("open()");
+					fprintf(stderr, "Could not open %s: %s\n", &tokenized[i][1], strerror(errno));
 					returnVal = -1;
 					continue;
 				}
@@ -201,8 +196,8 @@ int main( int argc, char* argv[], char *envp[] ) {
 				memset(u1, 0, sizeof(struct rusage));
 				memset(u2, 0, sizeof(struct rusage));
 				
-				printf("\nCommand returned with return code %d\n", status);
-				printf("Consuming %f real seconds, %f user, %f system\n", realt, usert, syst);
+				fprintf(stderr, "\nCommand returned with return code %d\n", status);
+				fprintf(stderr, "Consuming %f real seconds, %f user, %f system\n", realt, usert, syst);
 				break;
 		}
 	}
