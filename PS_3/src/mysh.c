@@ -6,12 +6,11 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <time.h>
-#include <sys/time.h>
-#include <sys/stat.h>
+
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 
 #define STRSIZ 1024
 
@@ -21,7 +20,7 @@ void bail(const char * msg) {
 }
 
 int safe_open(const char * file, int flags) {
-	int f = open(file, flags, 0644);
+	int f = open(file, flags);
 	if (f == -1) {
 		fprintf(stderr, "Could not open %s: %s\n", file, strerror(errno));
 		exit(-1);
@@ -29,16 +28,21 @@ int safe_open(const char * file, int flags) {
 	return f;
 }
 
+float time_diff(const struct timeval* start, const struct timeval* stop) {
+	return (stop->tv_sec - start->tv_sec) + (stop->tv_usec - start->tv_usec)/1.0e6;
+}
+
 int main( int argc, char* argv[], char *envp[] ) {
+	int returnVal = 0;
 
 	FILE * instream;
 	int prompt;
 
-	if ( argc == 1 ) {
+	if ( argc < 2 ) {
 		instream = stdin;
 		prompt = 1;
 	}
-	if ( argc == 2 ) {
+	else if ( argc == 2 ) {
 		int f = safe_open(argv[1], O_RDONLY);
 		instream = fdopen(f, "r");
 		prompt = 0;
@@ -56,21 +60,24 @@ int main( int argc, char* argv[], char *envp[] ) {
 		int stderr_fork = -1;
 
 		int status = 0;
-		struct rusage u;
-		clock_t time1, time2;
+		struct timeval stop, start;
+
+		struct rusage *u1, *u2; 
+		if (!(u1 = malloc(sizeof(struct rusage))))
+			bail("malloc()");
+		if (!(u2 = malloc(sizeof(struct rusage))))
+			bail("malloc()");
+
 		float realt, usert, syst;
 
 		if (prompt)
 			printf("$ ");
 		
 		if (!fgets(command, STRSIZ, instream)) {
-			printf("\n");
-			exit(0);
-		}
-
-		if ((command[0] == '\0')) {
-			printf("end of file");
-			exit(0);
+			printf("\nend of file\n");
+			free(u1);
+			free(u2);
+			exit(returnVal);
 		}
 
 		int ind = 0;
@@ -94,36 +101,67 @@ int main( int argc, char* argv[], char *envp[] ) {
 			}
 		}
 
-		if (tokenized[0][0] == '#')
+		if (tokenized[0] == '\0' || tokenized[0][0] == '#' )
 			continue;
 
 		int argsDone = 0;
 		for(int i = 1; tokenized[i] != 0; i++) {
 			if (!strncmp(tokenized[i], "2>>", 3)) {
-				stderr_fork = safe_open(&tokenized[i][3], O_WRONLY | O_CREAT | O_APPEND);
+				stderr_fork = open(&tokenized[i][3], O_WRONLY | O_CREAT | O_APPEND, 0644);
+				if (stderr_fork == -1) {
+					fprintf(stderr, "Could not open %s\n", &tokenized[i][3]);
+					perror("open()");
+					returnVal = -1;
+					continue;
+				}
 				argsDone = 1;
 			} else if (!strncmp(tokenized[i], "2>", 2)) {
-				stderr_fork = safe_open(&tokenized[i][2], O_WRONLY | O_CREAT | O_TRUNC);
+				stderr_fork = open(&tokenized[i][2], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+				if (stderr_fork == -1) {
+					fprintf(stderr, "Could not open %s\n", &tokenized[i][2]);
+					perror("open()");
+					returnVal = -1;
+					continue;
+				}
 				argsDone = 1;
 			} else if (!strncmp(tokenized[i], ">>", 2)) {
-				stdout_fork = safe_open(&tokenized[i][2], O_WRONLY | O_CREAT | O_APPEND);
+				stdout_fork = open(&tokenized[i][2], O_WRONLY | O_CREAT | O_APPEND, 0644);
+				if (stdout_fork == -1) {
+					fprintf(stderr, "Could not open %s\n", &tokenized[i][2]);
+					perror("open()");
+					returnVal = -1;
+					continue;
+				}
 				argsDone = 1;
 			} else if (!strncmp(tokenized[i], ">", 1)) {
-				stdout_fork = safe_open(&tokenized[i][1], O_WRONLY | O_CREAT | O_TRUNC);
+				stdout_fork = open(&tokenized[i][1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+				if (stdout_fork == -1) {
+					fprintf(stderr, "Could not open %s\n", &tokenized[i][1]);
+					perror("open()");
+					returnVal = -1;
+					continue;
+				}
 				argsDone = 1;
 			} else if (!strncmp(tokenized[i], "<", 1)) {
-				stdin_fork = safe_open(&tokenized[i][1], O_RDONLY);
+				stdin_fork = open(&tokenized[i][1], O_RDONLY, 0644);
+				if (stdin_fork == -1) {
+					fprintf(stderr, "Could not open %s\n", &tokenized[i][1]);
+					perror("open()");
+					returnVal = -1;
+					continue;
+				}
 				argsDone = 1;
 			} else if (argsDone) {
-				char error [STRSIZ];
 				fprintf(stderr, "Unrecognized stream redirect: %s", tokenized[i]);
-				bail(error);
+				returnVal = -1;
+				continue;
 			}
 
 			if (argsDone)
 				tokenized[i] = 0;
 		}
 
+		
 		int pid = fork();
 		switch (pid) {
 			case -1:
@@ -150,16 +188,19 @@ int main( int argc, char* argv[], char *envp[] ) {
 
 				break;
 			default:
-				time1 = clock();
+				getrusage(RUSAGE_SELF, u1);
+				gettimeofday(&start, NULL);
 				wait(&status);
-				time2 = clock();
+				gettimeofday(&stop, NULL);
+				getrusage(pid, u2);
 
-				getrusage(pid, &u);
+				realt = time_diff(&start, &stop);
+				usert = time_diff(&u2->ru_utime, &u1->ru_utime);
+				syst  = time_diff(&u2->ru_stime, &u1->ru_stime);
 
-				realt = (float)(time2 - time1)/CLOCKS_PER_SEC;
-				usert = (float)u.ru_utime.tv_usec/1e6;
-				syst  = (float)u.ru_stime.tv_usec/1e6;
-
+				memset(u1, 0, sizeof(struct rusage));
+				memset(u2, 0, sizeof(struct rusage));
+				
 				printf("\nCommand returned with return code %d\n", status);
 				printf("Consuming %f real seconds, %f user, %f system\n", realt, usert, syst);
 				break;

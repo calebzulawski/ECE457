@@ -1,0 +1,89 @@
+NOTE: Return value and timing was omitted for commands that returned
+zero in an attempt to clarify the output.  An example of the timing 
+is shown from the sleep command at the end of this output.
+
+(precise)caleb:src$ ./mysh 
+$ cat
+this is the interactive case, script interpreter case follows
+this is the interactive case, script interpreter case follows
+mysh can be called from itself, including in a shebang!
+mysh can be called from itself, including in a shebang!
+$ ./test.sh
+cat without permissions
+
+Command returned with return code 256
+Consuming 0.002932 real seconds, 0.000000 user, 0.003000 system
+
+Command returned with return code 256
+Consuming 0.002907 real seconds, 0.001000 user, 0.003000 system
+
+stderr truncated:
+cat: out1: Permission denied
+
+Command returned with return code 256
+Consuming 0.002546 real seconds, 0.001000 user, 0.004000 system
+
+stderr appended:
+cat: out1: Permission denied
+cat: out1: Permission denied
+
+stdout truncated:
+err1
+makefile
+mysh
+mysh.c
+mysh.o
+out1
+out2
+out3
+test.sh
+
+stdout appended:
+err1
+makefile
+mysh
+mysh.c
+mysh.o
+out1
+out2
+out3
+test.sh
+err1
+makefile
+mysh
+mysh.c
+mysh.o
+out1
+out2
+out3
+test.sh
+
+stdin to stdout
+err1
+makefile
+mysh
+mysh.c
+mysh.o
+out1
+out2
+out3
+test.sh
+err1
+makefile
+mysh
+mysh.c
+mysh.o
+out1
+out2
+out3
+test.sh
+
+end of file
+$ sleep 3
+
+Command returned with return code 0
+Consuming 3.003547 real seconds, 0.000000 user, 0.002000 system
+
+$
+end of file
+(precise)caleb:src$ 
