@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 #define COPYBUFSIZ 1024
 
@@ -40,11 +41,11 @@ void set_descriptors(int in, int out) {
 void copy_file(const int    fi,
                const int    fo,
                char*        buf,
-               const size_t buf_len)
+               const int    buf_len)
 {
     int bytes_read, bytes_written;
 
-    while ((bytes_read = read(fi, buf, (size_t) buf_len))) {
+    while ((bytes_read = read(fi, buf, buf_len))) {
         if (bytes_read == -1) {
             fprintf(stderr, "Error calling read(): %s\n", strerror(errno));
             return;
@@ -75,7 +76,7 @@ int main(int argc, char *argv[]) {
 	switch (fork()){
 		case 0:
 			set_descriptors(pipefd1[0], pipefd2[1]);
-			execl("grep", "grep", argv[1], (char *) NULL);
+			execlp("grep", "grep", argv[1], (char *) NULL);
 			fprintf(stderr, "Failed to open grep: %s\n", strerror(errno));
 		case -1:
 			fprintf(stderr, "Failed to fork() for grep: %s\n", strerror(errno));
@@ -84,8 +85,9 @@ int main(int argc, char *argv[]) {
 
 	switch (fork()) {
 		case 0:
+		    signal(SIGTTOU, SIG_IGN);
 			set_descriptors(pipefd2[0], -1);
-			execl("more", "more", (char *) NULL);
+			execlp("more", "more", (char *) NULL);
 			fprintf(stderr, "Failed to open more: %s\n", strerror(errno));
 		case -1:
 			fprintf(stderr, "Failed to fork() for more: %s\n", strerror(errno));
