@@ -78,20 +78,25 @@ int main(int argc, char *argv[]) {
 			set_descriptors(pipefd1[0], pipefd2[1]);
 			execlp("grep", "grep", argv[1], (char *) NULL);
 			fprintf(stderr, "Failed to open grep: %s\n", strerror(errno));
+			exit(-1);
 		case -1:
 			fprintf(stderr, "Failed to fork() for grep: %s\n", strerror(errno));
 			exit(-1);
+		default:
+			break;
 	}
 
 	switch (fork()) {
 		case 0:
-		    signal(SIGTTOU, SIG_IGN);
-			set_descriptors(pipefd2[0], -1);
+			set_descriptors(pipefd1[0], -1);
 			execlp("more", "more", (char *) NULL);
 			fprintf(stderr, "Failed to open more: %s\n", strerror(errno));
+			exit(-1);
 		case -1:
 			fprintf(stderr, "Failed to fork() for more: %s\n", strerror(errno));
 			exit(-1);
+		default:
+			break;
 	}
 
 	int fi;
