@@ -6,35 +6,20 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <signal.h>
 
 #define COPYBUFSIZ 1024
 
-void set_descriptors(int in, int out) {
-	if (in != -1) {
-		if (close(STDIN_FILENO) == -1) {
-			fprintf(stderr, "Failed to close standard input: %s\n", strerror(errno));
-			exit(-1);
-		}
-		if (dup2(in, STDIN_FILENO) == -1) {
-			fprintf(stderr, "Failed to set standard input to pipe: %s\n", strerror(errno));
-			exit(-1);
-		}
-		if (close(in) == -1)
-			fprintf(stderr, "Failed to close duplicate file descriptor: %s\n", strerror(errno));
-	}
+void close_msg(int f) {
+	if (close(f == -1))
+		fprintf(stderr, "Failed to close file descriptor %d: %s\n", f, strerror(errno));
+}
 
-	if (out != -1) {
-		if (close(STDOUT_FILENO) == -1) {
-			fprintf(stderr, "Failed to close standard out: %s\n", strerror(errno));
-			exit(-1);
-		}
-		if (dup2(out, STDOUT_FILENO) == -1) {
-			fprintf(stderr, "Failed to set standard output to pipe: %s\n", strerror(errno));
-			exit(-1);
-		}
-		if (close(out) == -1)
-			fprintf(stderr, "Failed to close duplicate file descriptor: %s\n", strerror(errno));
+void dup2_msg(int f1, int f2) {
+	if (dup2(f1, f2) == -1) {
+		fprintf(stderr, "Failed to dup2() fd %d to fd %d: %s\n", f1, f2, strerror(errno));
+		exit(-1);
 	}
 }
 
@@ -73,9 +58,15 @@ int main(int argc, char *argv[]) {
 		exit(-1);
 	}
 
-	switch (fork()){
+	int greppid;
+	switch (greppid = fork()) {
 		case 0:
-			set_descriptors(pipefd1[0], pipefd2[1]);
+			dup2_msg(pipefd1[0], STDIN_FILENO);
+			dup2_msg(pipefd2[1], STDOUT_FILENO);
+			close_msg(pipefd1[0]);
+			close_msg(pipefd1[1]);
+			close_msg(pipefd2[0]);
+			close_msg(pipefd2[1]);
 			execlp("grep", "grep", argv[1], (char *) NULL);
 			fprintf(stderr, "Failed to open grep: %s\n", strerror(errno));
 			exit(-1);
@@ -88,7 +79,11 @@ int main(int argc, char *argv[]) {
 
 	switch (fork()) {
 		case 0:
-			set_descriptors(pipefd1[0], -1);
+			dup2_msg(pipefd2[0], STDIN_FILENO);
+			close_msg(pipefd1[0]);
+			close_msg(pipefd1[1]);
+			close_msg(pipefd2[0]);
+			close_msg(pipefd2[1]);
 			execlp("more", "more", (char *) NULL);
 			fprintf(stderr, "Failed to open more: %s\n", strerror(errno));
 			exit(-1);
@@ -98,7 +93,9 @@ int main(int argc, char *argv[]) {
 		default:
 			break;
 	}
-
+	close_msg(pipefd1[0]);
+	close_msg(pipefd2[0]);
+	close_msg(pipefd2[1]);
 	int fi;
 	char buf [COPYBUFSIZ];
 	for (int i = 2; i < argc; i++) {
@@ -108,5 +105,6 @@ int main(int argc, char *argv[]) {
 		}
 		copy_file(fi, pipefd1[1], buf, COPYBUFSIZ);
 	}
+	close_msg(pipefd1[1]);
 	return 0;
 }
