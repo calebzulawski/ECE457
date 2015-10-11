@@ -1,4 +1,4 @@
-TARGET = catgrepmore
+TARGET = catgrepless
 LIBS   =
 CC     = gcc
 CFLAGS = -g -Wall -std=c99

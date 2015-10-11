@@ -12,7 +12,7 @@
 #define COPYBUFSIZ 1024
 
 void close_msg(int f) {
-	if (close(f == -1))
+	if (close(f) == -1)
 		fprintf(stderr, "Failed to close file descriptor %d: %s\n", f, strerror(errno));
 }
 
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
 			close_msg(pipefd1[1]);
 			close_msg(pipefd2[0]);
 			close_msg(pipefd2[1]);
-			execlp("more", "more", (char *) NULL);
+			execlp("less", "less", (char *) NULL);
 			fprintf(stderr, "Failed to open more: %s\n", strerror(errno));
 			exit(-1);
 		case -1:
@@ -106,5 +106,8 @@ int main(int argc, char *argv[]) {
 		copy_file(fi, pipefd1[1], buf, COPYBUFSIZ);
 	}
 	close_msg(pipefd1[1]);
+
+	wait(0);
+	wait(0);
 	return 0;
 }
