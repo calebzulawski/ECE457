@@ -11,6 +11,12 @@
 
 #define COPYBUFSIZ 1024
 
+size_t file_cnt, byte_cnt;
+void intHandler() {
+	fprintf(stderr, "\nSIGINT: %zuB and %zu complete files processed.\n", byte_cnt, file_cnt);
+	exit(-2);
+}
+
 void close_msg(int f) {
 	if (close(f) == -1)
 		fprintf(stderr, "Failed to close file descriptor %d: %s\n", f, strerror(errno));
@@ -41,6 +47,7 @@ void copy_file(const int    fi,
                 fprintf(stderr, "Error calling write(): %s\n", strerror(errno));
                 return;
             }
+            byte_cnt += bytes_written;
         } while (bytes_written < bytes_read); // Handle partial write
     }
 }
@@ -51,6 +58,9 @@ int main(int argc, char *argv[]) {
 		exit(-1);
 	}
 
+	signal(SIGINT, intHandler);
+	byte_cnt = 0;
+	file_cnt = 0;
 	for (int i = 2; i < argc; i++) {
 		int pipefd1[2], pipefd2[2];
 
@@ -106,6 +116,7 @@ int main(int argc, char *argv[]) {
 		}
 		copy_file(fi, pipefd1[1], buf, COPYBUFSIZ);
 		close_msg(pipefd1[1]);
+		file_cnt++;
 		wait(0);
 		wait(0);
 	}
