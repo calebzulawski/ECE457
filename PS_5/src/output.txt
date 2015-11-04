@@ -1,0 +1,80 @@
+Running test A
+
+10+0 records in
+10+0 records out
+10 bytes (10 B) copied, 0.0003063 s, 32.6 kB/s
+Opening small file
+File has length 10B
+Writing to map...
+Caught signal: Segmentation fault
+
+
+
+Running test B
+
+10000+0 records in
+10000+0 records out
+10000 bytes (10 kB) copied, 0.157535 s, 63.5 kB/s
+Opening test file
+File has length 10000B
+Writing the following to mapped file: some test data
+Read the following from file: some test data
+Data matched: yes
+
+
+
+Running test C
+
+10000+0 records in
+10000+0 records out
+10000 bytes (10 kB) copied, 0.129229 s, 77.4 kB/s
+Opening test file
+File has length 10000B
+Writing the following to mapped file: some test data
+Read the following from file: ýmñjýð
+½aFG+
+Data matched: no
+
+
+
+Running test D
+
+10000+0 records in
+10000+0 records out
+10000 bytes (10 kB) copied, 0.132988 s, 75.2 kB/s
+Opening test file
+File has length 10000B
+Writing one byte past end of file
+File now has length 10000B
+File expanded: no
+
+
+
+Running test E
+
+10000+0 records in
+10000+0 records out
+10000 bytes (10 kB) copied, 0.130892 s, 76.4 kB/s
+Opening test file
+File has length 10000B
+Writing one byte past end of file
+File now has length 10000B
+File expanded: no
+Expanding file
+File now has length 10015B
+Data read from file: some test data
+Data was written to file: yes
+
+
+
+Running test F
+
+10+0 records in
+10+0 records out
+10 bytes (10 B) copied, 0.000228325 s, 43.8 kB/s
+Opening small test file
+File has length 10B
+Accessing first page
+Accessing first page successful
+Now accessing second page
+Caught signal: Bus error

@@ -17,6 +17,7 @@ const char *largefile = "large.file";
 const char *data = "some test data";
 
 void sig_handle(int s) {
+	fflush(stdout); // Just so we can se the order of things
 	psignal(s, "Caught signal");
 	exit(1);
 }
@@ -106,23 +107,41 @@ void test_DE(int e) {
 	size_t newlength = file_size(fd);
 	printf("File now has length %zuB\n", newlength);
 	printf("File expanded: %s\n", newlength == length ? "no" : "yes");
+	// This doesn't work because you're writing to memory that hasn't even been mapped to a file
 
 	if (e) {
 		char buf[32];
 		printf("Expanding file\n");
 		_lseek(fd, strlen(data), SEEK_END);
-		_write(fd, '\0', 1);
+		_write(fd, "\0", 1);
 		_lseek(fd, length, SEEK_SET);
 		_read(fd, buf, 32);
 		newlength = file_size(fd);
 		printf("File now has length %zuB\n", newlength);
 		printf("Data read from file: %s\n", buf);
-		printf("Data was written to file: %s", strcmp(buf, data) == 0 ? "yes" : "no");
+		printf("Data was written to file: %s\n", strcmp(buf, data) == 0 ? "yes" : "no");
 	}
+}
+
+void test_F() {
+	printf("Opening small test file\n");
+	int fd = _open(smallfile, O_RDWR);
+	size_t length = file_size(fd);
+	printf("File has length %zuB\n", length);
+	char *m = (char*)_mmap(NULL, 8196, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	printf("Accessing first page\n");
+	char test = m[300];
+	printf("Accessing first page successful\nNow accessing second page\n");
+	test = m[6000];
+	printf("Accessing second page successful\n");
+	// Writing to the first page works because that page exists (since file was read into it)
+	// Writing to the second page doesn't work because it doesn't exists yet
 }
 
 int main( int argc, const char* argv[] ) {
 	if (signal(SIGSEGV,sig_handle) == SIG_ERR)
+		quit("signal() failed");
+	if (signal(SIGBUS,sig_handle) == SIG_ERR)
 		quit("signal() failed");
 	switch (argv[1][0]) {
 		case 'A':
@@ -139,6 +158,9 @@ int main( int argc, const char* argv[] ) {
 			break;
 		case 'E':
 			test_DE(1);
+			break;
+		case 'F':
+			test_F();
 			break;
 	}
 }
