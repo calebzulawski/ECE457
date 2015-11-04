@@ -11,11 +11,10 @@
 
 #define COPYBUFSIZ 1024
 
-size_t file_cnt, byte_cnt;
-void intHandler() {
-	fprintf(stderr, "\nSIGINT: %zuB and %zu complete files processed.\n", byte_cnt, file_cnt);
-	exit(-2);
-}
+#define CLOSEPIPES()	close_msg(pipefd1[0]); \
+						close_msg(pipefd1[1]); \
+						close_msg(pipefd2[0]); \
+						close_msg(pipefd2[1]);
 
 void close_msg(int f) {
 	if (close(f) == -1)
@@ -27,6 +26,14 @@ void dup2_msg(int f1, int f2) {
 		fprintf(stderr, "Failed to dup2() fd %d to fd %d: %s\n", f1, f2, strerror(errno));
 		exit(-1);
 	}
+}
+
+size_t file_cnt, byte_cnt;
+int pipefd1[2], pipefd2[2];
+void intHandler() {
+	fprintf(stderr, "\nSIGINT: %zuB and %zu complete files processed.\n", byte_cnt, file_cnt);
+	wait(0); // This seems to be necessary
+	exit(-2);
 }
 
 void copy_file(const int    fi,
@@ -62,7 +69,6 @@ int main(int argc, char *argv[]) {
 	byte_cnt = 0;
 	file_cnt = 0;
 	for (int i = 2; i < argc; i++) {
-		int pipefd1[2], pipefd2[2];
 
 		if ( pipe(pipefd1) == -1 || pipe(pipefd2) == -1){
 			fprintf(stderr, "Failed to open pipe: %s\n", strerror(errno));
@@ -74,10 +80,7 @@ int main(int argc, char *argv[]) {
 			case 0:
 				dup2_msg(pipefd1[0], STDIN_FILENO);
 				dup2_msg(pipefd2[1], STDOUT_FILENO);
-				close_msg(pipefd1[0]);
-				close_msg(pipefd1[1]);
-				close_msg(pipefd2[0]);
-				close_msg(pipefd2[1]);
+				CLOSEPIPES();
 				execlp("grep", "grep", argv[1], (char *) NULL);
 				fprintf(stderr, "Failed to open grep: %s\n", strerror(errno));
 				exit(-1);
@@ -91,10 +94,7 @@ int main(int argc, char *argv[]) {
 		switch (fork()) {
 			case 0:
 				dup2_msg(pipefd2[0], STDIN_FILENO);
-				close_msg(pipefd1[0]);
-				close_msg(pipefd1[1]);
-				close_msg(pipefd2[0]);
-				close_msg(pipefd2[1]);
+				CLOSEPIPES();
 				execlp("less", "less", (char *) NULL);
 				fprintf(stderr, "Failed to open more: %s\n", strerror(errno));
 				exit(-1);
@@ -104,9 +104,6 @@ int main(int argc, char *argv[]) {
 			default:
 				break;
 		}
-		close_msg(pipefd1[0]);
-		close_msg(pipefd2[0]);
-		close_msg(pipefd2[1]);
 		int fi;
 		char buf [COPYBUFSIZ];
 
@@ -115,7 +112,7 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 		copy_file(fi, pipefd1[1], buf, COPYBUFSIZ);
-		close_msg(pipefd1[1]);
+		CLOSEPIPES();
 		file_cnt++;
 		wait(0);
 		wait(0);

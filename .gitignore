@@ -16,6 +16,7 @@ copycat
 walker
 mysh
 catgrepless
+mtests
 
 # Test vectors
 mobydick.txt
