@@ -17,6 +17,8 @@ walker
 mysh
 catgrepless
 mtests
+test7
+fifo7
 
 # Test vectors
 mobydick.txt
