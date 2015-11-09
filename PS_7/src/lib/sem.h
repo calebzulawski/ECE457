@@ -18,6 +18,8 @@ struct sem {
 	struct wait_list procs;
 };
 
+extern unsigned my_procnum;
+
 void sem_init(struct sem *s, int count);
 int  sem_try (struct sem *s);
 void sem_wait(struct sem *s);

@@ -5,13 +5,13 @@
 #include <unistd.h>
 #include <stdio.h>
 
-#include "lib/tas.h"
+#include "lib/sem.h"
 
 #define NUM_PROC 8u
 #define ITER 1000000ul
 
 struct shared {
-	int lock;
+	struct sem sem;
 	unsigned long data;
 };
 
@@ -26,27 +26,25 @@ struct shared * make_mem() {
 
 int main(int argc, char **argv) {
 	if (argc != 2) {
-		printf("Supply an input option:\n\t1 for normal\n\t2 for spinlock\n\t3 for semaphore\n");
+		printf("Supply an input option:\n\t1 for normal\n\t2 for mutex\n");
 		exit(0);
 	}
 	int mutex = 0;
-
 	if (argv[1][0] == '1')
 		mutex = 0;
 	else if (argv[1][0] == '2')
 		mutex = 1;
-	else if (argv[1][0] == '3')
-		mutex = 2;
 	else
 		printf("Not a valid option.  Assuming no mutex.\n");
 
 	struct shared *s = make_mem();
+	sem_init(&s->sem, 1);
 	s->data = 0;
 	int child = 0;
-	pid_t pids[NUM_PROC];
 
 	printf("Spawning %u processes.\n", NUM_PROC);
 	for(size_t i = 0; i < NUM_PROC; i++) {
+		my_procnum = i;
 		pid_t pid = fork();
 		switch (pid) {
 			case -1:
@@ -56,7 +54,7 @@ int main(int argc, char **argv) {
 				child = 1;
 				goto endloop;
 			default:
-				pids[i] = pid;
+				s->sem.procs.pids[i] = pid;
 				continue;
 		}
 
@@ -66,28 +64,22 @@ int main(int argc, char **argv) {
 	if (child) {
 		unsigned long count;
 
-		if (mutex == 0) {
+		if (mutex) {
+			for (count = 0; count < ITER; count++) {
+				sem_wait(&s->sem);
+				s->data++;
+				sem_inc(&s->sem);
+			}
+		} else {
 			for (count = 0; count < 1e6; count++) {
 				s->data++;
-			}
-		} else if (mutex == 1) {
-			for (count = 0; count < ITER; count++) {
-				while (tas((char *)&s->lock));
-				s->data++;
-				s->lock = 0;
-			}
-		} else if (mutex == 2) {
-			for (count = 0; count < ITER; count++) {
-				while (tas((char *)&s->lock));
-				s->data++;
-				s->lock = 0;
 			}
 		}
 		printf("Exiting child.\n");
 		exit(0);
 	} else {
 		for (size_t i = 0; i < NUM_PROC; i++)
-			waitpid(pids[i], NULL, 0);
+			waitpid(s->sem.procs.pids[i], NULL, 0);
 		printf("Data has value: %lu\n", s->data);
 		printf("Data should be: %lu\n", ITER*NUM_PROC);
 		printf("Exiting parent process.\n");
