@@ -17,8 +17,9 @@ walker
 mysh
 catgrepless
 mtests
-test7
-fifo7
+test_tas
+test_sem
+test_fifo
 
 # Test vectors
 mobydick.txt
