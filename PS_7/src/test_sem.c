@@ -57,7 +57,6 @@ int main(int argc, char **argv) {
 				child = 1;
 				goto endloop;
 			default:
-				printf("Child pid: %ld\n", pid);
 				s->sem.procs.pids[i] = pid;
 				continue;
 		}
@@ -74,6 +73,7 @@ int main(int argc, char **argv) {
 				s->data++;
 				sem_inc(&s->sem);
 			}
+			kill_waiting(&s->sem);
 		} else {
 			for (count = 0; count < 1e6; count++) {
 				s->data++;

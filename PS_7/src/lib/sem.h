@@ -22,6 +22,8 @@ extern unsigned my_procnum;
 
 void empty_handler(int sig);
 
+void kill_waiting(struct sem *s);
+
 int  sem_init(struct sem *s, int count);
 int  sem_try (struct sem *s);
 void sem_wait(struct sem *s);
