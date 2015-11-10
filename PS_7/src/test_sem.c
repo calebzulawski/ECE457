@@ -38,7 +38,10 @@ int main(int argc, char **argv) {
 		printf("Not a valid option.  Assuming no mutex.\n");
 
 	struct shared *s = make_mem();
-	sem_init(&s->sem, 1);
+	if (!sem_init(&s->sem, 1)) {
+		perror("Could not initialize semaphore");
+		exit(-1);
+	}
 	s->data = 0;
 	int child = 0;
 
@@ -54,6 +57,7 @@ int main(int argc, char **argv) {
 				child = 1;
 				goto endloop;
 			default:
+				printf("Child pid: %ld\n", pid);
 				s->sem.procs.pids[i] = pid;
 				continue;
 		}
