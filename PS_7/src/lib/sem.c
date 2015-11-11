@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 unsigned my_procnum;
 
@@ -16,8 +17,7 @@ void empty_handler(int sig) {
 int sem_init(struct sem *s, int count) {
 	s->lock = 0;
 	s->count = count;
-	s->procs.start = 0;
-	s->procs.len = 0;
+	memset(s->suspended, 0, sizeof s->suspended);
 	return (sigfillset(&s->sig) == 0)
 	     & (sigdelset(&s->sig, SIGUSR1) == 0)
 	     & (sigdelset(&s->sig, SIGINT) == 0)
@@ -46,24 +46,26 @@ void sem_wait(struct sem *s) {
 		}
 
 		// Add to suspend list
-		s->procs.list[(s->procs.start + s->procs.len) % MAX_PROCESSES] = my_procnum;
-		s->procs.len++;
+		s->suspended[my_procnum] = 1;
+		s->pids[my_procnum] = getpid();
 		s->lock = 0;
 
 		// Wake up when called and try again
+		// printf("Sleeping: %u\n", my_procnum);
 		sigsuspend(&s->sig);
-		// printf("SIGUSR1 received: %u\n", my_procnum);
+		s->suspended[my_procnum] = 0;
+		// printf("Waking  : %u\n", my_procnum);
 	}
 }
 
 void sem_inc (struct sem *s) {
 	while(tas((char *)&s->lock));
-	if (s->procs.len > 0) {
-		// printf("Sending SIGUSR1 to %u\n", s->procs.list[s->procs.start]);
-		kill(s->procs.pids[s->procs.list[s->procs.start]], SIGUSR1);
-		s->procs.start = (s->procs.start + 1) % MAX_PROCESSES;
-		s->procs.len--;
-	}
 	s->count++;
+	for (size_t i = 0; i < MAX_PROCESSES; i++) {
+		if (s->suspended[i]) {
+			kill(s->pids[i], SIGUSR1);
+			break;
+		}
+	}
 	s->lock = 0;
 }

@@ -43,7 +43,6 @@ int main(int argc, char **argv) {
 		exit(-1);
 	}
 	s->data = 0;
-	int child = 0;
 
 	printf("Spawning %u processes.\n", NUM_PROC);
 	for(size_t i = 0; i < NUM_PROC; i++) {
@@ -54,39 +53,28 @@ int main(int argc, char **argv) {
 				perror("fork()");
 				exit(-1);
 			case 0:
-				child = 1;
-				goto endloop;
+				if (mutex) {
+					for (unsigned long count = 0; count < ITER; count++) {
+						sem_wait(&s->sem);
+						s->data++;
+						sem_inc(&s->sem);
+					}
+				} else {
+					for (unsigned long count = 0; count < 1e6; count++) {
+						s->data++;
+					}
+				}
+				printf("Exiting child.\n");
+				exit(0);
 			default:
-				s->sem.procs.pids[i] = pid;
 				continue;
 		}
 
 	}
-	endloop:
-
-	if (child) {
-		unsigned long count;
-
-		if (mutex) {
-			for (count = 0; count < ITER; count++) {
-				sem_wait(&s->sem);
-				s->data++;
-				sem_inc(&s->sem);
-			}
-			kill_waiting(&s->sem);
-		} else {
-			for (count = 0; count < 1e6; count++) {
-				s->data++;
-			}
-		}
-		printf("Exiting child.\n");
-		exit(0);
-	} else {
-		for (size_t i = 0; i < NUM_PROC; i++)
-			waitpid(s->sem.procs.pids[i], NULL, 0);
-		printf("Data has value: %lu\n", s->data);
-		printf("Data should be: %lu\n", ITER*NUM_PROC);
-		printf("Exiting parent process.\n");
-		exit(0);
-	}
+	for (size_t i = 0; i < NUM_PROC; i++)
+		waitpid(s->sem.pids[i], NULL, 0);
+	printf("Data has value: %lu\n", s->data);
+	printf("Data should be: %lu\n", ITER*NUM_PROC);
+	printf("Exiting parent process.\n");
+	exit(0);
 }
