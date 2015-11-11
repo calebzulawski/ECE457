@@ -37,4 +37,4 @@ clean:
 	-rm -f $(TARGET)
 
 doc:
-	a2ps *.c *.h *.sh *.txt --output=../doc/$(TARGET)-src.ps
+	a2ps lib/*.c lib/*.h *.c --output=../doc/sem-src.ps

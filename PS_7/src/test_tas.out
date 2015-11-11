@@ -1,0 +1,29 @@
+No lock:
+
+Spawning 8 processes.
+Exiting child.
+Exiting child.
+Exiting child.
+Exiting child.
+Exiting child.
+Exiting child.
+Exiting child.
+Exiting child.
+Data has value: 2884461
+Data should be: 8000000
+Exiting parent process.
+
+tas() lock:
+
+Spawning 8 processes.
+Exiting child.
+Exiting child.
+Exiting child.
+Exiting child.
+Exiting child.
+Exiting child.
+Exiting child.
+Exiting child.
+Data has value: 8000000
+Data should be: 8000000
+Exiting parent process.

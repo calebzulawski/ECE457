@@ -1,0 +1,1855 @@
+%!PS-Adobe-3.0
+%%Title: fifo.c, sem.c, fifo.h, sem.h, tas.h, fifo.c, test_fifo.c, test_sem.c, test_tas.c
+%%For: 
+%%Creator: a2ps version 4.14
+%%CreationDate: Wed Nov 11 17:39:27 2015
+%%BoundingBox: 24 24 588 768
+%%DocumentData: Clean7Bit
+%%Orientation: Portrait
+%%Pages: 12
+%%PageOrder: Ascend
+%%DocumentMedia: Letter 612 792 0 () ()
+%%DocumentNeededResources: font Courier
+%%+ font Courier-Bold
+%%+ font Courier-BoldOblique
+%%+ font Courier-Oblique
+%%+ font Helvetica
+%%+ font Helvetica-Bold
+%%+ font Symbol
+%%+ font Times-Bold
+%%+ font Times-Roman
+%%DocumentProcessColors: Black 
+%%DocumentSuppliedResources: procset a2ps-a2ps-hdr
+%%+ procset a2ps-black+white-Prolog
+%%+ encoding ISO-8859-1Encoding
+%%EndComments
+/a2psdict 200 dict def
+a2psdict begin
+%%BeginProlog
+%%Copyright: (c) 1988, 89, 90, 91, 92, 93 Miguel Santana
+%%Copyright: (c) 1995, 96, 97, 98 Akim Demaille, Miguel Santana
+% Check PostScript language level.
+/languagelevel where {
+  pop /gs_languagelevel languagelevel def
+} {
+  /gs_languagelevel 1 def
+} ifelse
+
+% EPSF import as in the Red Book
+/BeginInclude {
+  /b4_Inc_state save def    		% Save state for cleanup
+  /dict_count countdictstack def	% Count objects on dict stack
+  /op_count count 1 sub def		% Count objects on operand stack 
+  userdict begin
+    0 setgray 0 setlinecap
+    1 setlinewidth 0 setlinejoin
+    10 setmiterlimit [ ] 0 setdash newpath
+    gs_languagelevel 1 ne {
+      false setstrokeadjust false setoverprint 
+    } if
+} bind def
+
+/EndInclude {
+  count op_count sub { pos } repeat	% Clean up stacks
+  countdictstack dict_count sub { end } repeat
+  b4_Inc_state restore
+} bind def
+
+/BeginEPSF {
+  BeginInclude
+  /showpage { } def
+} bind def
+
+/EndEPSF {
+  EndInclude
+} bind def
+
+% Page prefeed
+/page_prefeed {         % bool -> -
+  statusdict /prefeed known {
+    statusdict exch /prefeed exch put
+  } {
+    pop
+  } ifelse
+} bind def
+
+/deffont {
+  findfont exch scalefont def
+} bind def
+
+/reencode_font {
+  findfont reencode 2 copy definefont pop def
+} bind def
+
+% Function c-show (str => -)
+% centers text only according to x axis.
+/c-show { 
+  dup stringwidth pop
+  2 div neg 0 rmoveto
+  show
+} bind def
+
+% Function l-show (str => -)
+% prints texts so that it ends at currentpoint
+/l-show {
+  dup stringwidth pop neg 
+  0 
+  rmoveto show
+} bind def
+
+% center-fit show (str w => -)
+% show centered, and scale currentfont so that the width is less than w
+/cfshow {
+  exch dup stringwidth pop
+  % If the title is too big, try to make it smaller
+  3 2 roll 2 copy
+  gt
+  { % if, i.e. too big
+    exch div
+    currentfont exch scalefont setfont
+  } { % ifelse
+    pop pop 
+  }
+  ifelse
+  c-show			% center title
+} bind def
+
+% Return the y size of the current font
+% - => fontsize
+/currentfontsize {
+  currentfont /FontType get 0 eq {
+    currentfont /FontMatrix get 3 get
+  }{
+    currentfont /FontMatrix get 3 get 1000 mul
+  } ifelse
+} bind def
+
+% reencode the font
+% <encoding-vector> <fontdict> -> <newfontdict>
+/reencode { %def
+  dup length 5 add dict begin
+    { %forall
+      % <vector> <key> <val>
+      1 index /FID ne 
+      { def }{ pop pop } ifelse
+    } forall
+    /Encoding exch def % -
+
+    % Use the font's bounding box to determine the ascent, descent,
+    % and overall height; don't forget that these values have to be
+    % transformed using the font's matrix.
+    % We use `load' because sometimes BBox is executable, sometimes not.
+    % Since we need 4 numbers an not an array avoid BBox from being executed
+    /FontBBox load aload pop
+    FontMatrix transform /Ascent exch def pop
+    FontMatrix transform /Descent exch def pop
+    /FontHeight Ascent Descent sub def
+
+    % Get the underline position and thickness if they're defined.
+    % Use 1 if they are not defined.
+    currentdict /FontInfo 2 copy known
+    { get
+      /UnderlinePosition 2 copy % <FontInfo> /UP <FontInfo> /UP
+      2 copy known
+      { get }{ pop pop 1 } ifelse
+      0 exch FontMatrix transform exch pop
+      def % <FontInfo>
+
+      /UnderlineThickness 2 copy % <FontInfo> /UT <FontInfo> /UT
+      2 copy known
+      { get }{ pop pop 1 } ifelse
+      0 exch FontMatrix transform exch pop
+      def % <FontInfo>
+      pop % -
+    }{ pop pop
+    } ifelse
+
+    currentdict
+  end 
+} bind def
+
+% composite fonts for ASCII-EUC mixed strings
+% Version 1.2 1/31/1990
+% Original Ken'ichi HANDA (handa@etl.go.jp)
+% Modified Norio Katayama (katayama@rd.nacsis.ac.jp),1998
+% Extend & Fix Koji Nakamaru (maru@on.cs.keio.ac.jp), 1999
+% Anyone can freely copy, modify, distribute this program.
+
+/copyfont {	% font-dic extra-entry-count  copyfont  font-dic
+	1 index maxlength add dict begin
+	{	1 index /FID ne 2 index /UniqueID ne and
+		{def} {pop pop} ifelse
+	} forall
+	currentdict
+	end
+} bind def
+
+/compositefont { % ASCIIFontName EUCFontName RomanScale RomanOffset Rot(T/F) compositefont font
+    /RomanRotation exch def
+    /RomanOffset exch def
+    /RomanScale exch def
+    userdict /fixeucfont_dict known not {
+	userdict begin
+	    /fixeucfont_dict 2 dict begin
+		/UpperByteEncoding [
+		    16#00 1 16#20 { pop 0 } for
+		    16#21 1 16#28 { 16#20 sub } for
+		    16#29 1 16#2F { pop 0 } for
+		    16#30 1 16#74 { 16#27 sub } for
+		    16#75 1 16#FF { pop 0 } for
+		] def
+	        /LowerByteEncoding [
+		    16#00 1 16#A0 { pop /.notdef } for
+		    16#A1 1 16#FE { 16#80 sub 16 2 string cvrs
+				    (cXX) dup 1 4 -1 roll
+				    putinterval cvn } for
+		    /.notdef
+		] def
+		currentdict
+	    end def
+	end
+    } if
+    findfont dup /FontType get 0 eq {
+	14 dict begin
+	    %
+	    % 7+8 bit EUC font
+	    %
+	    12 dict begin
+		/EUCFont exch def
+		/FontInfo (7+8 bit EUC font) readonly def
+		/PaintType 0 def
+		/FontType 0 def
+		/FontMatrix matrix def
+		% /FontName
+		/Encoding fixeucfont_dict /UpperByteEncoding get def
+		/FMapType 2 def
+		EUCFont /WMode known
+		{ EUCFont /WMode get /WMode exch def }
+		{ /WMode 0 def } ifelse
+		/FDepVector [
+		    EUCFont /FDepVector get 0 get
+		    [ 16#21 1 16#28 {} for 16#30 1 16#74 {} for ]
+		    {
+			13 dict begin
+			    /EUCFont EUCFont def
+			    /UpperByte exch 16#80 add def	
+			    % /FontName
+			    /FontInfo (EUC lower byte font) readonly def
+			    /PaintType 0 def
+			    /FontType 3 def
+			    /FontMatrix matrix def
+			    /FontBBox {0 0 0 0} def
+			    /Encoding
+				fixeucfont_dict /LowerByteEncoding get def
+			    % /UniqueID
+			    % /WMode
+			    /BuildChar {
+				gsave
+				exch dup /EUCFont get setfont
+				/UpperByte get
+				2 string
+				dup 0 4 -1 roll put
+				dup 1 4 -1 roll put
+				dup stringwidth setcharwidth
+				0 0 moveto show
+				grestore
+			    } bind def
+			    currentdict
+			end
+			/lowerbytefont exch definefont
+		    } forall
+		] def
+		currentdict
+	    end
+	    /eucfont exch definefont
+	    exch
+	    findfont 1 copyfont dup begin
+		RomanRotation {
+			/FontMatrix FontMatrix
+			[ 0 RomanScale neg RomanScale 0 RomanOffset neg 0 ]
+			matrix concatmatrix def
+		}{
+			/FontMatrix FontMatrix
+			[ RomanScale 0 0 RomanScale 0 RomanOffset ] matrix concatmatrix
+			def
+			/CDevProc
+			    {pop pop pop pop 0 exch -1000 exch 2 div 880} def
+		} ifelse
+	    end
+	    /asciifont exch definefont
+	    exch
+	    /FDepVector [ 4 2 roll ] def
+	    /FontType 0 def
+	    /WMode 0 def
+	    /FMapType 4 def
+	    /FontMatrix matrix def
+	    /Encoding [0 1] def
+	    /FontBBox {0 0 0 0} def
+%	    /FontHeight 1.0 def % XXXX
+	    /FontHeight RomanScale 1.0 ge { RomanScale }{ 1.0 } ifelse def
+	    /Descent -0.3 def   % XXXX
+	    currentdict
+	end
+	/tmpfont exch definefont
+	pop
+	/tmpfont findfont
+    }{
+	pop findfont 0 copyfont
+    } ifelse
+} def	
+
+/slantfont {	% FontName slant-degree  slantfont  font'
+    exch findfont 1 copyfont begin
+    [ 1 0 4 -1 roll 1 0 0 ] FontMatrix exch matrix concatmatrix
+    /FontMatrix exch def
+    currentdict
+    end
+} def
+
+% Function print line number (<string> # -)
+/# {
+  gsave
+    sx cw mul neg 2 div 0 rmoveto
+    f# setfont
+    c-show
+  grestore
+} bind def
+
+% -------- Some routines to enlight plain b/w printings ---------
+
+% Underline
+% width --
+/dounderline {
+  currentpoint
+  gsave
+    moveto
+    0 currentfont /Descent get currentfontsize mul rmoveto
+    0 rlineto
+    stroke
+  grestore
+} bind def
+
+% Underline a string
+% string --
+/dounderlinestring {
+  stringwidth pop
+  dounderline
+} bind def
+
+/UL {
+  /ul exch store
+} bind def
+
+% Draw a box of WIDTH wrt current font
+% width --
+/dobox {
+  currentpoint
+  gsave
+    newpath
+    moveto
+    0 currentfont /Descent get currentfontsize mul rmoveto
+    dup 0 rlineto
+    0 currentfont /FontHeight get currentfontsize mul rlineto
+    neg 0 rlineto
+    closepath
+    stroke
+  grestore
+} bind def
+
+/BX {
+  /bx exch store
+} bind def
+
+% Box a string
+% string --
+/doboxstring {
+  stringwidth pop
+  dobox
+} bind def
+
+%
+% ------------- Color routines ---------------
+%
+/FG /setrgbcolor load def
+
+% Draw the background
+% width --
+/dobackground {
+  currentpoint
+  gsave
+    newpath
+    moveto
+    0 currentfont /Descent get currentfontsize mul rmoveto
+    dup 0 rlineto
+    0 currentfont /FontHeight get currentfontsize mul rlineto
+    neg 0 rlineto
+    closepath
+    bgcolor aload pop setrgbcolor
+    fill
+  grestore
+} bind def
+
+% Draw bg for a string
+% string --
+/dobackgroundstring {
+  stringwidth pop
+  dobackground
+} bind def
+
+
+/BG {
+  dup /bg exch store
+  { mark 4 1 roll ] /bgcolor exch store } if
+} bind def
+
+
+/Show {
+  bg { dup dobackgroundstring } if
+  ul { dup dounderlinestring } if
+  bx { dup doboxstring } if
+  show
+} bind def
+
+% Function T(ab), jumps to the n-th tabulation in the current line
+/T {
+  cw mul x0 add
+  bg { dup currentpoint pop sub dobackground } if
+  ul { dup currentpoint pop sub dounderline } if
+  bx { dup currentpoint pop sub dobox } if
+  y0 moveto
+} bind def
+
+% Function n: move to the next line
+/n {
+  /y0 y0 bfs sub store
+  x0 y0 moveto
+} bind def
+
+% Function N: show and move to the next line
+/N {
+  Show
+  /y0 y0 bfs sub store
+  x0 y0 moveto
+} bind def
+
+/S {
+  Show
+} bind def
+
+%%BeginResource: procset a2ps-a2ps-hdr 2.0 2
+%%Copyright: (c) 1988, 89, 90, 91, 92, 93 Miguel Santana
+%%Copyright: (c) 1995, 96, 97, 98 Akim Demaille, Miguel Santana
+% Function title: prints page header.
+% <ct> <rt> <lt> are passed as argument
+/title { 
+  % 1. Draw the background
+  x v get y v get moveto
+  gsave
+    0 th 2 div neg rmoveto 
+    th setlinewidth
+    0.95 setgray
+    pw 0 rlineto stroke
+  grestore
+  % 2. Border it
+  gsave
+    0.7 setlinewidth
+    pw 0 rlineto
+    0 th neg rlineto
+    pw neg 0 rlineto
+    closepath stroke
+  grestore
+  % stk: ct rt lt
+  x v get y v get th sub 1 add moveto
+%%IncludeResource: font Helvetica
+  fHelvetica fnfs 0.8 mul scalefont setfont
+  % 3. The left title
+  gsave
+    dup stringwidth pop fnfs 0.8 mul add exch % leave space took on stack
+    fnfs 0.8 mul hm rmoveto
+    show			% left title
+  grestore
+  exch
+  % stk: ct ltw rt
+  % 4. the right title
+  gsave
+    dup stringwidth pop fnfs 0.8 mul add exch % leave space took on stack
+    dup
+    pw exch stringwidth pop fnfs 0.8 mul add sub
+    hm
+    rmoveto
+    show			% right title
+  grestore
+  % stk: ct ltw rtw
+  % 5. the center title
+  gsave
+    pw 3 1 roll
+    % stk: ct pw ltw rtw
+    3 copy 
+    % Move to the center of the left room
+    sub add 2 div hm rmoveto
+    % What is the available space in here?
+    add sub fnfs 0.8 mul sub fnfs 0.8 mul sub
+    % stk: ct space_left
+%%IncludeResource: font Helvetica-Bold
+  fHelvetica-Bold fnfs scalefont setfont
+    cfshow
+  grestore
+} bind def
+
+% Function border: prints virtual page border
+/border { %def
+  gsave				% print four sides
+    0 setgray
+    x v get y v get moveto
+    0.7 setlinewidth		% of the square
+    pw 0 rlineto
+    0 ph neg rlineto
+    pw neg 0 rlineto
+    closepath stroke
+  grestore
+} bind def
+
+% Function water: prints a water mark in background
+/water { %def
+  gsave
+    scx scy moveto rotate
+%%IncludeResource: font Times-Bold
+  fTimes-Bold 100 scalefont setfont
+    .97 setgray
+    dup stringwidth pop 2 div neg -50 rmoveto
+    show
+  grestore
+} bind def
+
+% Function rhead: prints the right header
+/rhead {  %def
+  lx ly moveto
+  fHelvetica fnfs 0.8 mul scalefont setfont
+  l-show
+} bind def
+
+% Function footer (cf rf lf -> -)
+/footer {
+  fHelvetica fnfs 0.8 mul scalefont setfont
+  dx dy moveto
+  show
+
+  snx sny moveto
+  l-show
+  
+  fnx fny moveto
+  c-show
+} bind def
+%%EndResource
+%%BeginResource: procset a2ps-black+white-Prolog 2.0 1
+
+% Function T(ab), jumps to the n-th tabulation in the current line
+/T { 
+  cw mul x0 add y0 moveto
+} bind def
+
+% Function n: move to the next line
+/n { %def
+  /y0 y0 bfs sub store
+  x0 y0 moveto
+} bind def
+
+% Function N: show and move to the next line
+/N {
+  Show
+  /y0 y0 bfs sub store
+  x0 y0 moveto
+}  bind def
+
+/S {
+  Show
+} bind def
+
+/p {
+  false UL
+  false BX
+  fCourier bfs scalefont setfont
+  Show
+} bind def
+
+/sy {
+  false UL
+  false BX
+  fSymbol bfs scalefont setfont
+  Show
+} bind def
+
+/k {
+  false UL
+  false BX
+  fCourier-Oblique bfs scalefont setfont
+  Show
+} bind def
+
+/K {
+  false UL
+  false BX
+  fCourier-Bold bfs scalefont setfont
+  Show
+} bind def
+
+/c {
+  false UL
+  false BX
+  fCourier-Oblique bfs scalefont setfont
+  Show
+} bind def
+
+/C {
+  false UL
+  false BX
+  fCourier-BoldOblique bfs scalefont setfont
+  Show 
+} bind def
+
+/l {
+  false UL
+  false BX
+  fHelvetica bfs scalefont setfont
+  Show
+} bind def
+
+/L {
+  false UL
+  false BX
+  fHelvetica-Bold bfs scalefont setfont
+  Show 
+} bind def
+
+/str{
+  false UL
+  false BX
+  fTimes-Roman bfs scalefont setfont
+  Show
+} bind def
+
+/e{
+  false UL
+  true BX
+  fHelvetica-Bold bfs scalefont setfont
+  Show
+} bind def
+
+%%EndResource
+%%EndProlog
+%%BeginSetup
+%%IncludeResource: font Courier
+%%IncludeResource: font Courier-Oblique
+%%IncludeResource: font Courier-Bold
+%%IncludeResource: font Times-Roman
+%%IncludeResource: font Symbol
+%%IncludeResource: font Courier-BoldOblique
+%%BeginResource: encoding ISO-8859-1Encoding
+/ISO-8859-1Encoding [
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/space /exclam /quotedbl /numbersign /dollar /percent /ampersand /quoteright 
+/parenleft /parenright /asterisk /plus /comma /minus /period /slash 
+/zero /one /two /three /four /five /six /seven 
+/eight /nine /colon /semicolon /less /equal /greater /question 
+/at /A /B /C /D /E /F /G 
+/H /I /J /K /L /M /N /O 
+/P /Q /R /S /T /U /V /W 
+/X /Y /Z /bracketleft /backslash /bracketright /asciicircum /underscore 
+/quoteleft /a /b /c /d /e /f /g 
+/h /i /j /k /l /m /n /o 
+/p /q /r /s /t /u /v /w 
+/x /y /z /braceleft /bar /braceright /asciitilde /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/space /exclamdown /cent /sterling /currency /yen /brokenbar /section 
+/dieresis /copyright /ordfeminine /guillemotleft /logicalnot /hyphen /registered /macron 
+/degree /plusminus /twosuperior /threesuperior /acute /mu /paragraph /bullet 
+/cedilla /onesuperior /ordmasculine /guillemotright /onequarter /onehalf /threequarters /questiondown 
+/Agrave /Aacute /Acircumflex /Atilde /Adieresis /Aring /AE /Ccedilla 
+/Egrave /Eacute /Ecircumflex /Edieresis /Igrave /Iacute /Icircumflex /Idieresis 
+/Eth /Ntilde /Ograve /Oacute /Ocircumflex /Otilde /Odieresis /multiply 
+/Oslash /Ugrave /Uacute /Ucircumflex /Udieresis /Yacute /Thorn /germandbls 
+/agrave /aacute /acircumflex /atilde /adieresis /aring /ae /ccedilla 
+/egrave /eacute /ecircumflex /edieresis /igrave /iacute /icircumflex /idieresis 
+/eth /ntilde /ograve /oacute /ocircumflex /otilde /odieresis /divide 
+/oslash /ugrave /uacute /ucircumflex /udieresis /yacute /thorn /ydieresis 
+] def
+%%EndResource
+% Initialize page description variables.
+/sh 792 def
+/sw 612 def
+/llx 24 def
+/urx 588 def
+/ury 768 def
+/lly 24 def
+/#copies 1 def
+/th 20.000000 def
+/fnfs 15 def
+/bfs 11.547912 def
+/cw 6.928747 def
+
+% Dictionary for ISO-8859-1 support
+/iso1dict 8 dict begin
+  /fCourier ISO-8859-1Encoding /Courier reencode_font
+  /fCourier-Bold ISO-8859-1Encoding /Courier-Bold reencode_font
+  /fCourier-BoldOblique ISO-8859-1Encoding /Courier-BoldOblique reencode_font
+  /fCourier-Oblique ISO-8859-1Encoding /Courier-Oblique reencode_font
+  /fHelvetica ISO-8859-1Encoding /Helvetica reencode_font
+  /fHelvetica-Bold ISO-8859-1Encoding /Helvetica-Bold reencode_font
+  /fTimes-Bold ISO-8859-1Encoding /Times-Bold reencode_font
+  /fTimes-Roman ISO-8859-1Encoding /Times-Roman reencode_font
+currentdict end def
+/bgcolor [ 0 0 0 ] def
+/bg false def
+/ul false def
+/bx false def
+% The font for line numbering
+/f# /Helvetica findfont bfs .6 mul scalefont def
+/fSymbol /Symbol findfont def
+/hm fnfs 0.25 mul def
+/pw
+   cw 81.400000 mul
+def
+/ph
+   689.410325 th add
+def
+/pmw 0 def
+/pmh 0 def
+/v 0 def
+/x [
+  0
+] def
+/y [
+  pmh ph add 0 mul ph add
+] def
+/scx sw 2 div def
+/scy sh 2 div def
+/snx urx def
+/sny lly 2 add def
+/dx llx def
+/dy sny def
+/fnx scx def
+/fny dy def
+/lx snx def
+/ly ury fnfs 0.8 mul sub def
+/sx 0 def
+/tab 2 def
+/x0 0 def
+/y0 0 def
+%%EndSetup
+
+%%Page: (1) 1
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( ") p
+(fifo.h) str
+(") p n
+() N
+(int) k
+( fifo_init\() p
+(struct) k
+( fifo *f\) {) p n
+() S 2 T (f->readptr = 0;) N
+() S 2 T (f->writeptr = 0;) N
+() S 2 T () S
+(return) K
+( sem_init\(&f->writeAvailable, MYFIFO_BUFSIZ\)) p n
+() S 2 T (     & sem_init\(&f->readAvailable, 0\)) N
+() S 2 T (     & sem_init\(&f->mutex, 1\);) N
+(}) N
+() N
+(void) k
+( fifo_wr\() p
+(struct) k
+( fifo *f, ) p
+(unsigned) k
+( ) p
+(long) k
+( d\) {) p n
+() S 2 T () S
+(while) K
+( \(1\) {) p n
+() S 2 T () S 4 T (sem_wait\(&f->writeAvailable\);) N
+() S 2 T () S 4 T () S
+(if) K
+( \(sem_try\(&f->mutex\)\) {) p n
+() S 2 T () S 4 T () S 6 T (f->buffer[f->writeptr] = d;) N
+() S 2 T () S 4 T () S 6 T (f->writeptr = \(f->writeptr + 1\) % MYFIFO_BUFSIZ;) N
+() S 2 T () S 4 T () S 6 T (sem_inc\(&f->mutex\);) N
+() S 2 T () S 4 T () S 6 T (sem_inc\(&f->readAvailable\);) N
+() S 2 T () S 4 T () S 6 T () S
+(return) K
+(;) p n
+() S 2 T () S 4 T (} ) S
+(else) K
+( {) p n
+() S 2 T () S 4 T () S 6 T (sem_inc\(&f->writeAvailable\);) N
+() S 2 T () S 4 T (}) N
+() S 2 T (}) N
+(}) N
+() N
+(unsigned) k
+( ) p
+(long) k
+( fifo_rd\() p
+(struct) k
+( fifo *f\) {) p n
+() S 2 T () S
+(unsigned) k
+( ) p
+(long) k
+( val;) p n
+() S 2 T () S
+(while) K
+( \(1\) {) p n
+() S 2 T () S 4 T (sem_wait\(&f->readAvailable\);) N
+() S 2 T () S 4 T () S
+(if) K
+( \(sem_try\(&f->mutex\)\) {) p n
+() S 2 T () S 4 T () S 6 T (val = f->buffer[f->readptr];) N
+() S 2 T () S 4 T () S 6 T (f->readptr = \(f->readptr + 1\) % MYFIFO_BUFSIZ;) N
+() S 2 T () S 4 T () S 6 T (sem_inc\(&f->mutex\);) N
+() S 2 T () S 4 T () S 6 T (sem_inc\(&f->writeAvailable\);) N
+() S 2 T () S 4 T () S 6 T () S
+(return) K
+( val;) p n
+() S 2 T () S 4 T (} ) S
+(else) K
+( {) p n
+() S 2 T () S 4 T () S 6 T (sem_inc\(&f->readAvailable\);) N
+() S 2 T () S 4 T (}) N
+() S 2 T (}) N
+(}) S
+(fifo.c) (Page 1/1) (Nov 10, 15 23:39) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (1/12) (Wednesday November 11, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 2
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( ") p
+(sem.h) str
+(") p n
+(#include) K
+( ") p
+(tas.h) str
+(") p n
+(#include) K
+( <signal.h>) p n
+(#include) K
+( <stdio.h>) p n
+(#include) K
+( <stdlib.h>) p n
+(#include) K
+( <unistd.h>) p n
+(#include) K
+( <string.h>) p n
+() N
+(unsigned) k
+( my_procnum;) p n
+() N
+(void) k
+( empty_handler\() p
+(int) k
+( sig\) {) p n
+() S 2 T () S
+(if) K
+( \(sig == SIGINT\)) p n
+() S 2 T () S 4 T (exit\(0\);) N
+() S 2 T () S
+(return) K
+(;) p n
+(}) N
+() N
+(int) k
+( sem_init\() p
+(struct) k
+( sem *s, ) p
+(int) k
+( count\) {) p n
+() S 2 T (s->lock = 0;) N
+() S 2 T (s->count = count;) N
+() S 2 T (memset\(s->suspended, 0, ) S
+(sizeof) K
+( s->suspended\);) p n
+() S 2 T () S
+(return) K
+( \(sigfillset\(&s->sig\) == 0\)) p n
+() S 2 T (     & \(sigdelset\(&s->sig, SIGUSR1\) == 0\)) N
+() S 2 T (     & \(sigdelset\(&s->sig, SIGINT\) == 0\)) N
+() S 2 T (     & \(signal\(SIGUSR1, empty_handler\) != SIG_ERR\);) N
+(}) N
+() N
+(int) k
+( sem_try \() p
+(struct) k
+( sem *s\) {) p n
+() S 2 T () S
+(int) k
+( ret = 0;) p n
+() S 2 T () S
+(while) K
+(\(tas\(\() p
+(char) k
+( *\)&s->lock\)\);) p n
+() S 2 T () S
+(if) K
+(\(s->count > 0\) {) p n
+() S 2 T () S 4 T (s->count--;) N
+() S 2 T () S 4 T (ret = 1;) N
+() S 2 T (}) N
+() S 2 T (s->lock = 0;) N
+() S 2 T () S
+(return) K
+( ret;) p n
+(}) N
+(void) k
+( sem_wait\() p
+(struct) k
+( sem *s\) {) p n
+() S 2 T () S
+(while) K
+( \(1\) {) p n
+() S 2 T () S 4 T () S
+(// Wait for lock) c n
+() p 2 T () S 4 T () S
+(while) K
+(\(tas\(\() p
+(char) k
+( *\)&s->lock\)\);) p n
+() S 2 T () S 4 T () S
+(if) K
+( \(s->count > 0\) {) p n
+() S 2 T () S 4 T () S 6 T () S
+(// Decrement and return) c n
+() p 2 T () S 4 T () S 6 T (s->count--;) N
+() S 2 T () S 4 T () S 6 T (s->lock = 0;) N
+() S 2 T () S 4 T () S 6 T () S
+(return) K
+(;) p n
+() S 2 T () S 4 T (}) N
+() N
+() S 2 T () S 4 T () S
+(// Add to suspend list) c n
+() p 2 T () S 4 T (s->suspended[my_procnum] = 1;) N
+() S 2 T () S 4 T (s->pids[my_procnum] = getpid\(\);) N
+() S 2 T () S 4 T (s->lock = 0;) N
+() N
+() S 2 T () S 4 T () S
+(// Wake up when called and try again) c n
+() p 2 T () S 4 T () S
+(// printf\("Sleeping: %u\\n", my_procnum\);) c n
+() p 2 T () S 4 T (sigsuspend\(&s->sig\);) N
+() S 2 T () S 4 T (s->suspended[my_procnum] = 0;) N
+() S 2 T () S 4 T () S
+(// printf\("Waking  : %u\\n", my_procnum\);) c n
+() p 2 T (}) N
+(}) N
+(sem.c) (Page 1/2) (Nov 10, 15 20:04) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Wednesday November 11, 2015) (2/12) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (2) 3
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p n
+(void) k
+( sem_inc \() p
+(struct) k
+( sem *s\) {) p n
+() S 2 T () S
+(while) K
+(\(tas\(\() p
+(char) k
+( *\)&s->lock\)\);) p n
+() S 2 T (s->count++;) N
+() S 2 T () S
+(for) K
+( \(size_t i = 0; i < MAX_PROCESSES; i++\) {) p n
+() S 2 T () S 4 T () S
+(if) K
+( \(s->suspended[i]\) {) p n
+() S 2 T () S 4 T () S 6 T (kill\(s->pids[i], SIGUSR1\);) N
+() S 2 T () S 4 T () S 6 T () S
+(break) K
+(;) p n
+() S 2 T () S 4 T (}) N
+() S 2 T (}) N
+() S 2 T (s->lock = 0;) N
+(}) S
+(sem.c) (Page 2/2) (Nov 10, 15 20:04) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (3/12) (Wednesday November 11, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 4
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( ") p
+(sem.h) str
+(") p n
+() N
+(#define) K
+( MYFIFO_BUFSIZ 4096) p n
+() N
+(struct) k
+( fifo {) p n
+() S 2 T () S
+(struct) k
+( sem writeAvailable;) p n
+() S 2 T () S
+(struct) k
+( sem readAvailable;) p n
+() S 2 T () S
+(struct) k
+( sem mutex;) p n
+() S 2 T () S
+(unsigned) k
+( ) p
+(long) k
+( buffer[MYFIFO_BUFSIZ];) p n
+() S 2 T (size_t writeptr;) N
+() S 2 T (size_t readptr;) N
+(};) N
+() N
+(int) k
+(           fifo_init \() p
+(struct) k
+( fifo *f\);) p n
+(void) k
+(          fifo_wr   \() p
+(struct) k
+( fifo *f, ) p
+(unsigned) k
+( ) p
+(long) k
+( d\);) p n
+(unsigned) k
+( ) p
+(long) k
+( fifo_rd   \() p
+(struct) k
+( fifo *f\);) p
+(fifo.h) (Page 1/1) (Nov 10, 15 23:25) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Wednesday November 11, 2015) (4/12) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 5
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( <sys/types.h>) p n
+() N
+(#define) K
+( MAX_PROCESSES 64) p n
+() N
+(// Semaphore structure) c n
+(struct) k
+( sem {) p n
+() S 2 T () S
+(char) k
+( lock;) p n
+() S 2 T () S
+(int) k
+( count;) p n
+() S 2 T (sigset_t sig;) N
+() S 2 T () S
+(char) k
+( suspended[MAX_PROCESSES];) p n
+() S 2 T (pid_t pids[MAX_PROCESSES];) N
+(};) N
+() N
+(extern) K
+( ) p
+(unsigned) k
+( my_procnum;) p n
+() N
+(void) k
+( empty_handler\() p
+(int) k
+( sig\);) p n
+() N
+(void) k
+( wake_waiting\() p
+(struct) k
+( sem *s\);) p n
+() N
+(int) k
+(  sem_init\() p
+(struct) k
+( sem *s, ) p
+(int) k
+( count\);) p n
+(int) k
+(  sem_try \() p
+(struct) k
+( sem *s\);) p n
+(void) k
+( sem_wait\() p
+(struct) k
+( sem *s\);) p n
+(void) k
+( sem_inc \() p
+(struct) k
+( sem *s\);) p
+(sem.h) (Page 1/1) (Nov 10, 15 19:56) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (5/12) (Wednesday November 11, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 6
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#ifndef) K
+( _TAS_H_) p n
+(#define) K
+( _TAS_H_) p n
+() N
+(int) k
+( tas\() p
+(volatile) K
+( ) p
+(char) k
+( * lock\);) p n
+() N
+(#endif) K
+( ) p
+(/* _TAS_H_ */) c
+(tas.h) (Page 1/1) (Nov 08, 15 0:09) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Wednesday November 11, 2015) (6/12) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 7
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( <sys/mman.h>) p n
+(#include) K
+( <sys/types.h>) p n
+(#include) K
+( <sys/wait.h>) p n
+(#include) K
+( <stdlib.h>) p n
+(#include) K
+( <unistd.h>) p n
+(#include) K
+( <stdio.h>) p n
+() N
+(#include) K
+( ") p
+(lib/fifo.h) str
+(") p n
+() N
+(#define) K
+( WRITE_SIZE 100) p n
+(#define) K
+( NUM_PROC 8) p n
+() N
+(struct) k
+( fifo * make_mem\(\) {) p n
+() S 2 T () S
+(void) k
+( *m = mmap\(0, ) p
+(sizeof) K
+(\() p
+(struct) k
+( fifo\), PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP) p n
+(_SHARED, -1, 0\);) N
+() S 2 T () S
+(if) K
+( \(m == \() p
+(void) k
+( *\)-1\){) p n
+() S 2 T () S 4 T (perror\(") S
+(mmap\(\)) str
+("\);) p n
+() S 2 T () S 4 T (exit\(-1\);) N
+() S 2 T (}) N
+() S 2 T () S
+(return) K
+( \() p
+(struct) k
+( fifo *\) m;) p n
+(}) N
+() N
+(int) k
+( main\() p
+(void) k
+(\) {) p n
+() S 2 T () S
+(struct) k
+( fifo *f = make_mem\(\);) p n
+() S 2 T () S
+(if) K
+( \(!fifo_init\(f\)\) {) p n
+() S 2 T () S 4 T (perror\(") S
+(Could not initialize fifo) str
+("\);) p n
+() S 2 T () S 4 T (exit\(-1\);) N
+() S 2 T (}) N
+() N
+() S 2 T (pid_t readpid;) N
+() S 2 T () S
+(for) K
+(\(size_t i = 0; i < NUM_PROC; i++\) {) p n
+() S 2 T () S 4 T (my_procnum = i;) N
+() S 2 T () S 4 T (pid_t pid = fork\(\);) N
+() S 2 T () S 4 T () S
+(switch) K
+( \(pid\) {) p n
+() S 2 T () S 4 T () S 6 T () S
+(case) K
+( -1:) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (perror\(") S
+(fork\(\)) str
+("\);) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (exit\(-1\);) N
+() S 2 T () S 4 T () S 6 T () S
+(case) K
+( 0:) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S
+(if) K
+( \(my_procnum == 0\) {) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S
+(unsigned) k
+( ) p
+(long) k
+( val;) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S
+(for) K
+( \(size_t j = 0; j < WRITE_SIZE*\(NUM_PROC-1\); j++\) {) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S 12 T (val = fifo_rd\(f\);) N
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S 12 T (printf\(") S
+(Got %lx\\n) str
+(", val\);) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T (}) N
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T (printf\(") S
+(Exiting reader.\\n) str
+("\);) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (} ) S
+(else) K
+( {) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S
+(unsigned) k
+( ) p
+(long) k
+( val = \(my_procnum << 16\);) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S
+(for) K
+( \() p
+(unsigned) k
+( ) p
+(long) k
+( j = 0; j < WRITE_SIZE; j++\) {) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S 12 T (printf\(") S
+(Sent %lx\\n) str
+(", val + j\);) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S 12 T (fifo_wr\(f, val + j\);) N
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T (}) N
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T (printf\(") S
+(Exiting writer.\\n) str
+("\);) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (}) N
+() S 2 T () S 4 T () S 6 T () S 8 T (exit\(0\);) N
+() S 2 T () S 4 T () S 6 T () S
+(default) K
+(:) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S
+(if) K
+( \(my_procnum == 0\)) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T (readpid = pid;) N
+() S 2 T () S 4 T () S 6 T () S 8 T () S
+(continue) K
+(;) p n
+() S 2 T () S 4 T (}) N
+(test_fifo.c) (Page 1/2) (Nov 11, 15 0:17) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (7/12) (Wednesday November 11, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (2) 8
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p n
+() S 2 T (}) N
+() S 2 T (waitpid\(readpid, ) S
+(NULL) K
+(, 0\);) p n
+() S 2 T (exit\(0\);) N
+(}) S
+(test_fifo.c) (Page 2/2) (Nov 11, 15 0:17) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Wednesday November 11, 2015) (8/12) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 9
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( <sys/mman.h>) p n
+(#include) K
+( <sys/types.h>) p n
+(#include) K
+( <sys/wait.h>) p n
+(#include) K
+( <stdlib.h>) p n
+(#include) K
+( <unistd.h>) p n
+(#include) K
+( <stdio.h>) p n
+() N
+(#include) K
+( ") p
+(lib/sem.h) str
+(") p n
+() N
+(#define) K
+( NUM_PROC 8u) p n
+(#define) K
+( ITER 1000000ul) p n
+() N
+(struct) k
+( shared {) p n
+() S 2 T () S
+(struct) k
+( sem sem;) p n
+() S 2 T () S
+(unsigned) k
+( ) p
+(long) k
+( data;) p n
+(};) N
+() N
+(struct) k
+( shared * make_mem\(\) {) p n
+() S 2 T () S
+(void) k
+( *m = mmap\(0, ) p
+(sizeof) K
+(\() p
+(struct) k
+( shared\), PROT_READ|PROT_WRITE, MAP_ANONYMOUS|M) p n
+(AP_SHARED, -1, 0\);) N
+() S 2 T () S
+(if) K
+( \(m == \() p
+(void) k
+( *\)-1\){) p n
+() S 2 T () S 4 T (perror\(") S
+(mmap\(\)) str
+("\);) p n
+() S 2 T () S 4 T (exit\(-1\);) N
+() S 2 T (}) N
+() S 2 T () S
+(return) K
+( \() p
+(struct) k
+( shared *\) m;) p n
+(}) N
+() N
+(int) k
+( main\() p
+(int) k
+( argc, ) p
+(char) k
+( **argv\) {) p n
+() S 2 T () S
+(if) K
+( \(argc != 2\) {) p n
+() S 2 T () S 4 T (printf\(") S
+(Supply an input option:\\n\\t1 for normal\\n\\t2 for mutex\\n) str
+("\);) p n
+() S 2 T () S 4 T (exit\(0\);) N
+() S 2 T (}) N
+() S 2 T () S
+(int) k
+( mutex = 0;) p n
+() S 2 T () S
+(if) K
+( \(argv[1][0] == ') p
+(1) str
+('\)) p n
+() S 2 T () S 4 T (mutex = 0;) N
+() S 2 T () S
+(else) K
+( ) p
+(if) K
+( \(argv[1][0] == ') p
+(2) str
+('\)) p n
+() S 2 T () S 4 T (mutex = 1;) N
+() S 2 T () S
+(else) K n
+() p 2 T () S 4 T (printf\(") S
+(Not a valid option.  Assuming no mutex.\\n) str
+("\);) p n
+() N
+() S 2 T () S
+(struct) k
+( shared *s = make_mem\(\);) p n
+() S 2 T () S
+(if) K
+( \(!sem_init\(&s->sem, 1\)\) {) p n
+() S 2 T () S 4 T (perror\(") S
+(Could not initialize semaphore) str
+("\);) p n
+() S 2 T () S 4 T (exit\(-1\);) N
+() S 2 T (}) N
+() S 2 T (s->data = 0;) N
+() N
+() S 2 T (printf\(") S
+(Spawning %u processes.\\n) str
+(", NUM_PROC\);) p n
+() S 2 T () S
+(for) K
+(\(size_t i = 0; i < NUM_PROC; i++\) {) p n
+() S 2 T () S 4 T (my_procnum = i;) N
+() S 2 T () S 4 T (pid_t pid = fork\(\);) N
+() S 2 T () S 4 T () S
+(switch) K
+( \(pid\) {) p n
+() S 2 T () S 4 T () S 6 T () S
+(case) K
+( -1:) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (perror\(") S
+(fork\(\)) str
+("\);) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (exit\(-1\);) N
+() S 2 T () S 4 T () S 6 T () S
+(case) K
+( 0:) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S
+(if) K
+( \(mutex\) {) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S
+(for) K
+( \() p
+(unsigned) k
+( ) p
+(long) k
+( count = 0; count < ITER; count++\) {) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S 12 T (sem_wait\(&s->sem\);) N
+(test_sem.c) (Page 1/2) (Nov 10, 15 20:04) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (9/12) (Wednesday November 11, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (2) 10
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S 12 T (s->data++;) N
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S 12 T (sem_inc\(&s->sem\);) N
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T (}) N
+() S 2 T () S 4 T () S 6 T () S 8 T (} ) S
+(else) K
+( {) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S
+(for) K
+( \() p
+(unsigned) k
+( ) p
+(long) k
+( count = 0; count < 1e6; count++\) {) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T () S 12 T (s->data++;) N
+() S 2 T () S 4 T () S 6 T () S 8 T () S 10 T (}) N
+() S 2 T () S 4 T () S 6 T () S 8 T (}) N
+() S 2 T () S 4 T () S 6 T () S 8 T (printf\(") S
+(Exiting child.\\n) str
+("\);) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (exit\(0\);) N
+() S 2 T () S 4 T () S 6 T () S
+(default) K
+(:) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S
+(continue) K
+(;) p n
+() S 2 T () S 4 T (}) N
+() N
+() S 2 T (}) N
+() S 2 T () S
+(for) K
+( \(size_t i = 0; i < NUM_PROC; i++\)) p n
+() S 2 T () S 4 T (waitpid\(s->sem.pids[i], ) S
+(NULL) K
+(, 0\);) p n
+() S 2 T (printf\(") S
+(Data has value: %lu\\n) str
+(", s->data\);) p n
+() S 2 T (printf\(") S
+(Data should be: %lu\\n) str
+(", ITER*NUM_PROC\);) p n
+() S 2 T (printf\(") S
+(Exiting parent process.\\n) str
+("\);) p n
+() S 2 T (exit\(0\);) N
+(}) S
+(test_sem.c) (Page 2/2) (Nov 10, 15 20:04) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Wednesday November 11, 2015) (10/12) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (1) 11
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( <sys/mman.h>) p n
+(#include) K
+( <sys/types.h>) p n
+(#include) K
+( <sys/wait.h>) p n
+(#include) K
+( <stdlib.h>) p n
+(#include) K
+( <unistd.h>) p n
+(#include) K
+( <stdio.h>) p n
+() N
+(#include) K
+( ") p
+(lib/tas.h) str
+(") p n
+() N
+(#define) K
+( NUM_PROC 8u) p n
+(#define) K
+( ITER 1000000ul) p n
+() N
+(struct) k
+( shared {) p n
+() S 2 T () S
+(int) k
+( lock;) p n
+() S 2 T () S
+(unsigned) k
+( ) p
+(long) k
+( data;) p n
+(};) N
+() N
+(struct) k
+( shared * make_mem\(\) {) p n
+() S 2 T () S
+(void) k
+( *m = mmap\(0, ) p
+(sizeof) K
+(\() p
+(struct) k
+( shared\), PROT_READ|PROT_WRITE, MAP_ANONYMOUS|M) p n
+(AP_SHARED, -1, 0\);) N
+() S 2 T () S
+(if) K
+( \(m == \() p
+(void) k
+( *\)-1\){) p n
+() S 2 T () S 4 T (perror\(") S
+(mmap\(\)) str
+("\);) p n
+() S 2 T () S 4 T (exit\(-1\);) N
+() S 2 T (}) N
+() S 2 T () S
+(return) K
+( \() p
+(struct) k
+( shared *\) m;) p n
+(}) N
+() N
+(int) k
+( main\() p
+(int) k
+( argc, ) p
+(char) k
+( **argv\) {) p n
+() S 2 T () S
+(if) K
+( \(argc != 2\) {) p n
+() S 2 T () S 4 T (printf\(") S
+(Supply an input option:\\n\\t1 for normal\\n\\t2 for mutex\\n) str
+("\);) p n
+() S 2 T () S 4 T (exit\(0\);) N
+() S 2 T (}) N
+() S 2 T () S
+(int) k
+( mutex = 0;) p n
+() S 2 T () S
+(if) K
+( \(argv[1][0] == ') p
+(1) str
+('\)) p n
+() S 2 T () S 4 T (mutex = 0;) N
+() S 2 T () S
+(else) K
+( ) p
+(if) K
+( \(argv[1][0] == ') p
+(2) str
+('\)) p n
+() S 2 T () S 4 T (mutex = 1;) N
+() S 2 T () S
+(else) K n
+() p 2 T () S 4 T (printf\(") S
+(Not a valid option.  Assuming no mutex.\\n) str
+("\);) p n
+() N
+() S 2 T () S
+(struct) k
+( shared *s = make_mem\(\);) p n
+() S 2 T (s->data = 0;) N
+() S 2 T () S
+(int) k
+( child = 0;) p n
+() S 2 T (pid_t pids[NUM_PROC];) N
+() N
+() S 2 T (printf\(") S
+(Spawning %u processes.\\n) str
+(", NUM_PROC\);) p n
+() S 2 T () S
+(for) K
+(\(size_t i = 0; i < NUM_PROC; i++\) {) p n
+() S 2 T () S 4 T (pid_t pid = fork\(\);) N
+() S 2 T () S 4 T () S
+(switch) K
+( \(pid\) {) p n
+() S 2 T () S 4 T () S 6 T () S
+(case) K
+( -1:) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (perror\(") S
+(fork\(\)) str
+("\);) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (exit\(-1\);) N
+() S 2 T () S 4 T () S 6 T () S
+(case) K
+( 0:) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (child = 1;) N
+() S 2 T () S 4 T () S 6 T () S 8 T () S
+(goto) K
+( endloop;) p n
+() S 2 T () S 4 T () S 6 T () S
+(default) K
+(:) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (pids[i] = pid;) N
+() S 2 T () S 4 T () S 6 T () S 8 T () S
+(continue) K
+(;) p n
+() S 2 T () S 4 T (}) N
+(test_tas.c) (Page 1/2) (Nov 08, 15 19:24) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (11/12) (Wednesday November 11, 2015) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (2) 12
+%%BeginPageSetup
+/pagesave save def
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 4.850123 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p n
+() S 2 T (}) N
+() S 2 T (endloop:) N
+() N
+() S 2 T () S
+(if) K
+( \(child\) {) p n
+() S 2 T () S 4 T () S
+(unsigned) k
+( ) p
+(long) k
+( count;) p n
+() N
+() S 2 T () S 4 T () S
+(if) K
+( \(mutex\) {) p n
+() S 2 T () S 4 T () S 6 T () S
+(for) K
+( \(count = 0; count < ITER; count++\) {) p n
+() S 2 T () S 4 T () S 6 T () S 8 T () S
+(while) K
+( \(tas\(\() p
+(char) k
+( *\)&s->lock\)\);) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (s->data++;) N
+() S 2 T () S 4 T () S 6 T () S 8 T (s->lock = 0;) N
+() S 2 T () S 4 T () S 6 T (}) N
+() S 2 T () S 4 T (} ) S
+(else) K
+( {) p n
+() S 2 T () S 4 T () S 6 T () S
+(for) K
+( \(count = 0; count < 1e6; count++\) {) p n
+() S 2 T () S 4 T () S 6 T () S 8 T (s->data++;) N
+() S 2 T () S 4 T () S 6 T (}) N
+() S 2 T () S 4 T (}) N
+() S 2 T () S 4 T (printf\(") S
+(Exiting child.\\n) str
+("\);) p n
+() S 2 T () S 4 T (exit\(0\);) N
+() S 2 T (} ) S
+(else) K
+( {) p n
+() S 2 T () S 4 T () S
+(for) K
+( \(size_t i = 0; i < NUM_PROC; i++\)) p n
+() S 2 T () S 4 T () S 6 T (waitpid\(pids[i], ) S
+(NULL) K
+(, 0\);) p n
+() S 2 T () S 4 T (printf\(") S
+(Data has value: %lu\\n) str
+(", s->data\);) p n
+() S 2 T () S 4 T (printf\(") S
+(Data should be: %lu\\n) str
+(", ITER*NUM_PROC\);) p n
+() S 2 T () S 4 T (printf\(") S
+(Exiting parent process.\\n) str
+("\);) p n
+() S 2 T () S 4 T (exit\(0\);) N
+() S 2 T (}) N
+(}) S
+(test_tas.c) (Page 2/2) (Nov 08, 15 19:24) title
+border
+grestore
+(Caleb Zulawski) rhead
+() (Wednesday November 11, 2015) (12/12) footer
+end % of iso1dict
+pagesave restore
+showpage
+
+%%Trailer
+end
+%%EOF
