@@ -1,0 +1,5 @@
+$ gcc -O0 -std=gnu11 p5.c
+$ ./a.out 
+Loop takes 3.38177 nanoseconds
+Function takes 1.88529 nanoseconds
+getuid() takes 100.803 nanoseconds
