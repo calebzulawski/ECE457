@@ -1,0 +1,11 @@
+$ nasm -f elf64 p4.S 
+$ ld p4.o -op4
+$ strace ./p4
+execve("./p4", ["./p4"], [/* 31 vars */]) = 0
+write(1, "Hi\n", 3Hi
+)                     = 3
+syscall_600(0x7, 0x6000d8, 0x3, 0, 0, 0) = -1 (errno 38)
+--- SIGSEGV {si_signo=SIGSEGV, si_code=SEGV_MAPERR, si_addr=0x43} ---
++++ killed by SIGSEGV (core dumped) +++
+Segmentation fault (core dumped)
+$

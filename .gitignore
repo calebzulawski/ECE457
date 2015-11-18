@@ -20,6 +20,11 @@ mtests
 test_tas
 test_sem
 test_fifo
+p1
+p2
+p3
+p4
+p5
 
 # Test vectors
 mobydick.txt

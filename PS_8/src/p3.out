@@ -1,2 +1,5 @@
 Problem 3:
-If you don't call exit, the process is killed with SIGSEGV.  This is because the instruction pointer advanced beyond the end of the program and attempted to execute a memory address not associated with the executable.
+If you don't call exit, the process is killed with SIGSEGV.  This is because the instruction pointer advanced beyond the end of the program and attempted to
+execute a memory address not associated with the executable.
+
+Printing with an exit code of 7 is shown in problem 2.

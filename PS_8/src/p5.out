@@ -3,3 +3,7 @@ $ ./a.out
 Loop takes 3.38177 nanoseconds
 Function takes 1.88529 nanoseconds
 getuid() takes 100.803 nanoseconds
+
+The system call took about 50x longer.  This is due to the process of handling
+the interrupt, and maintaining the process state while executing the function
+call.

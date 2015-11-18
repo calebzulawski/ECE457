@@ -2,10 +2,12 @@ $ nasm -f elf64 p2.S
 $ ld p2.o -op2
 $ ./p2
 Hi
+$ echo $?
+7
 $ strace ./p2
 execve("./p2", ["./p2"], [/* 31 vars */]) = 0
 write(1, "Hi\n", 3Hi
 )                     = 3
-_exit(1)                                = ?
-+++ exited with 1 +++
-$ 
+_exit(7)                                = ?
++++ exited with 7 +++
+$

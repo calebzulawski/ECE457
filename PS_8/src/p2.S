@@ -14,5 +14,5 @@ _start:
         syscall
 
         mov     eax, 60      ; exit
-        xor     rdi, 0       ; 0
+        mov     rdi, 7       ; 7
         syscall
