@@ -176,8 +176,8 @@ int sched_wait(int *exit_code) {
 }
 
 void sched_nice(int val) {
-    val = val >  20 ? val :  20;
-    val = val < -19 ? val : -19;
+    val = val >  19 ? val :  19;
+    val = val < -20 ? val : -20;
     current->nice = val;
 }
 
@@ -197,10 +197,21 @@ void sched_ps() {
 
 }
 
+int getPriority(int pid) {
+    if (queue->procs[pid] != NULL)
+        return 20 - queue->procs[pid]->nice - queue->procs[pid]->accumulated;
+    else
+        return -1;
+}
+
 void sched_switch() {
 
 }
 
 void sched_tick() {
-
+    nticks++;
+    current->accumulated++;
+    current->cpu_time++;
+    sched_switch();
+    return;
 }

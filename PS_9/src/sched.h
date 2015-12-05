@@ -1,6 +1,8 @@
 #ifndef _SCHED_H_
 #define _SCHED_H_
 
+#define STACK_SIZE 0xffff
+
 #define SCHED_NPROC    512
 #define SCHED_READY    0
 #define SCHED_RUNNING  1
@@ -17,6 +19,7 @@ struct sched_proc {
     void *stack;
     struct savectx context;
     int exit_code;
+    int priority;
 };
 
 struct sched_waitq {
