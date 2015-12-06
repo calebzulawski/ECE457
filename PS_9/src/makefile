@@ -1,0 +1,28 @@
+TARGET = sched_test
+LIBS   =
+CC     = gcc
+CFLAGS = -g -Wall -std=gnu99 -Wfatal-errors
+
+.PHONY: default all clean
+
+default: $(TARGET)
+all: default
+
+OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))
+OBJECTS += $(patsubst %.S, %.o, $(wildcard *.S))
+HEADERS = $(wildcard *.h)
+
+%.o: %.c $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+.PRECIOUS: $(TARGET) $(OBJECTS)
+
+$(TARGET): $(OBJECTS)
+	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
+
+clean:
+	-rm -f *.o
+	-rm -f $(TARGET)
+
+doc:
+	a2ps *.c *.h *.sh *.txt --output=../doc/$(TARGET)-src.ps
