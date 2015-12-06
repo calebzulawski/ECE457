@@ -200,6 +200,19 @@ int sched_gettick() {
 }
 
 void sched_ps() {
+    printf("PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      \n");
+    for (int i = 0; i < SCHED_NPROC; i++) {
+        if (queue->procs[i] != NULL) {
+            printf("%9d %9d %9d %9x %9d %9d %9d", 
+                queue->procs[i]->pid,
+                queue->procs[i]->ppid,
+                queue->procs[i]->state,
+                (unsigned)queue->procs[i]->stack,
+                20 - queue->procs[i]->nice,
+                queue->procs[i]->priority,
+                queue->procs[i]->accumulated);
+        }
+    }
 
 }
 
@@ -208,6 +221,7 @@ int getPriority(int pid) {
         int priority = 20 - queue->procs[pid]->nice - queue->procs[pid]->cpu_time/2;
         priority = priority > 39 ? 39 : priority;
         priority = priority < 0  ? 0  : priority;
+        queue->procs[pid]->priority = priority;
         return priority;
     } else {
         return -1;
