@@ -29,7 +29,7 @@ int create_pid() {
         return -1;
     }
     // Skip PID 0, since scheduler should probably have that
-    for (unsigned i = 0; i < SCHED_NPROC; i++){
+    for (unsigned i = 1; i < SCHED_NPROC; i++){
         if (queue->procs[i] == NULL)
             return i;
     }
@@ -67,7 +67,7 @@ struct sched_proc * create_proc(int ppid) {
     proc->state       = SCHED_READY;
     proc->pid         = pid;
     proc->ppid        = ppid;
-    proc->nice        = 0;
+    proc->nice        = 20;
     proc->accumulated = 0;
     proc->cpu_time    = 0;
     proc->stack       = newsp;
@@ -91,11 +91,11 @@ int sched_init(void (*init_fn)()) {
     nticks = 0;
     struct timeval t;
     t.tv_sec = 0;
-    t.tv_usec = 1e6;
+    t.tv_usec = 1e5;
     struct itimerval it;
     it.it_interval = t;
     it.it_value = t;
-    if(setitimer(ITIMER_REAL, &it, NULL) == -1) {
+    if(setitimer(ITIMER_VIRTUAL, &it, NULL) == -1) {
         perror("Failed to set timer");
         return -1;
     }
@@ -107,27 +107,32 @@ int sched_init(void (*init_fn)()) {
     ctx.regs[JB_BP] = current->stack + STACK_SIZE;
     ctx.regs[JB_SP] = current->stack + STACK_SIZE;
     ctx.regs[JB_PC] = init_fn;
-    restorectx(&ctx, 0);
+    restorectx(&ctx, current->pid);
 
     return 0;
 }
 
 int sched_fork() {
+    int ret;
     HOLD_SIGNALS(
         struct sched_proc * newproc = create_proc(current->pid);
         newproc->cpu_time = current->cpu_time;
         memcpy(newproc->stack, current->stack, STACK_SIZE);
         adjstack(newproc->stack, newproc->stack + STACK_SIZE, newproc->stack - current->stack);
 
-        int return_pid = newproc->pid;
-        if (!savectx(&newproc->context)) {
+        ret = savectx(&newproc->context);
+        if (ret == 0) {
             newproc->context.regs[JB_BP] += newproc->stack - current->stack;
             newproc->context.regs[JB_SP] += newproc->stack - current->stack;
-        } else {
-            return_pid = 0;
         }
+
     );
-    return return_pid;
+    if (ret == 0) {
+        return newproc->pid;
+    } else {
+        current = queue->procs[ret];
+        return 0;
+    }
 }
 
 void sched_exit(int code) {
@@ -152,7 +157,7 @@ int sched_wait(int *exit_code) {
         int zombie = 0;
         found = 0;
         zombie = 0;
-        for (int i = 0; i < SCHED_NPROC; i++) {
+        for (int i = 1; i < SCHED_NPROC; i++) {
             if (queue->procs[i] != NULL
              && queue->procs[i]->ppid == current->pid) {
                 found = 1;
@@ -176,6 +181,7 @@ int sched_wait(int *exit_code) {
             return 0;
         } else {
             UNBLOCK_SIGNALS();
+            current->state = SCHED_SLEEPING;
             sched_switch();
         }
     }
@@ -201,9 +207,9 @@ int sched_gettick() {
 
 void sched_ps() {
     printf("PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      \n");
-    for (int i = 0; i < SCHED_NPROC; i++) {
+    for (int i = 1; i < SCHED_NPROC; i++) {
         if (queue->procs[i] != NULL) {
-            printf("%9d %9d %9d %9x %9d %9d %9d", 
+            printf("%-9d %-9d %-9d %-9x %-9d %-9d %-9d\n", 
                 queue->procs[i]->pid,
                 queue->procs[i]->ppid,
                 queue->procs[i]->state,
@@ -218,9 +224,9 @@ void sched_ps() {
 
 int getPriority(int pid) {
     if (queue->procs[pid] != NULL) {
-        int priority = 20 - queue->procs[pid]->nice - queue->procs[pid]->cpu_time/2;
-        priority = priority > 39 ? 39 : priority;
-        priority = priority < 0  ? 0  : priority;
+        int priority = 20 - queue->procs[pid]->nice - queue->procs[pid]->accumulated/2;
+        // priority = priority > 39 ? 39 : priority;
+        // priority = priority < 0  ? 0  : priority;
         queue->procs[pid]->priority = priority;
         return priority;
     } else {
@@ -236,14 +242,17 @@ void sched_switch() {
     int best = -1;
     int best_pid = -1;
     int p;
-    for (int pid = 0; pid < SCHED_NPROC; pid++) {
+    for (int pid = 1; pid < SCHED_NPROC; pid++) {
         if ((queue->procs[pid] != NULL)
-         && (queue->procs[pid] == SCHED_READY)
+         && (queue->procs[pid]->state == SCHED_READY)
          && ((p = getPriority(pid)) > best)) {
             best = p;
             best_pid = pid;
         }
     }
+
+    if (best_pid == -1)
+        return;
 
     if (best_pid == current->pid) {
         current->state = SCHED_RUNNING;
@@ -257,11 +266,12 @@ void sched_switch() {
         current->cpu_time = 0;
         current->state = SCHED_RUNNING;
         UNBLOCK_SIGNALS();
-        restorectx(&current->context, 1);
+        restorectx(&current->context, current->pid);
     }
 }
 
 void sched_tick() {
+    sched_ps();
     nticks++;
     current->accumulated++;
     current->cpu_time++;
