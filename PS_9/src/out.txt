@@ -1,0 +1,136 @@
+Hello
+Created pid 2
+Created pid 3
+Created pid 4
+Created pid 5
+Created pid 6
+In parent with pid 1
+In child with pid 2, ppid 1
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         1         49f7a000  10        20        0        
+3         1         0         49f6a000  20        20        0        
+4         1         0         49f5a000  20        20        0        
+5         1         0         49f4a000  20        20        0        
+6         1         0         49f3a000  20        20        0        
+In child with pid 3, ppid 1
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        10        1        
+3         1         1         49f6a000  12        20        0        
+4         1         0         49f5a000  20        20        0        
+5         1         0         49f4a000  20        20        0        
+6         1         0         49f3a000  20        20        0        
+In child with pid 4, ppid 1
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        10        1        
+3         1         0         49f6a000  12        12        1        
+4         1         1         49f5a000  16        20        0        
+5         1         0         49f4a000  20        20        0        
+6         1         0         49f3a000  20        20        0        
+In child with pid 5, ppid 1
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        10        1        
+3         1         0         49f6a000  12        12        1        
+4         1         0         49f5a000  16        16        1        
+5         1         1         49f4a000  14        20        0        
+6         1         0         49f3a000  20        20        0        
+In child with pid 6, ppid 1
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        10        1        
+3         1         0         49f6a000  12        12        1        
+4         1         0         49f5a000  16        16        1        
+5         1         0         49f4a000  14        14        1        
+6         1         1         49f3a000  18        20        0        
+
+... 
+
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        10        1        
+3         1         0         49f6a000  12        10        4        
+4         1         0         49f5a000  16        10        12       
+5         1         0         49f4a000  14        10        8        
+6         1         1         49f3a000  18        11        14       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        10        1        
+3         1         0         49f6a000  12        10        4        
+4         1         0         49f5a000  16        10        12       
+5         1         0         49f4a000  14        10        8        
+6         1         1         49f3a000  18        11        15       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         1         49f7a000  10        10        1        
+3         1         0         49f6a000  12        10        4        
+4         1         0         49f5a000  16        10        12       
+5         1         0         49f4a000  14        10        8        
+6         1         0         49f3a000  18        10        16       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        9         2        
+3         1         1         49f6a000  12        10        4        
+4         1         0         49f5a000  16        10        12       
+5         1         0         49f4a000  14        10        8        
+6         1         0         49f3a000  18        10        16       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        9         2        
+3         1         1         49f6a000  12        10        5        
+4         1         0         49f5a000  16        10        12       
+5         1         0         49f4a000  14        10        8        
+6         1         0         49f3a000  18        10        16       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        9         2        
+3         1         0         49f6a000  12        9         6        
+4         1         1         49f5a000  16        10        12       
+5         1         0         49f4a000  14        10        8        
+6         1         0         49f3a000  18        10        16       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        9         2        
+3         1         0         49f6a000  12        9         6        
+4         1         1         49f5a000  16        10        13       
+5         1         0         49f4a000  14        10        8        
+6         1         0         49f3a000  18        10        16       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        9         2        
+3         1         0         49f6a000  12        9         6        
+4         1         0         49f5a000  16        9         14       
+5         1         1         49f4a000  14        10        8        
+6         1         0         49f3a000  18        10        16       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        9         2        
+3         1         0         49f6a000  12        9         6        
+4         1         0         49f5a000  16        9         14       
+5         1         1         49f4a000  14        10        9        
+6         1         0         49f3a000  18        10        16       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        0         0        
+2         1         0         49f7a000  10        9         2        
+3         1         0         49f6a000  12        9         6        
+4         1         0         49f5a000  16        9         14       
+5         1         0         49f4a000  14        9         10       
+6         1         1         49f3a000  18        10        16     
+
+...
+
+Child returned with code 3
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        20        0        
+2         1         1         49f7a000  10        1         18       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        20        0        
+2         1         1         49f7a000  10        1         19       
+PID       PPID      STATE     STACK     STATIC    DYNAMIC   TIME      
+1         0         2         49f98000  20        20        0        
+2         1         1         49f7a000  10        0         20       
+Child returned with code 2
+Children returned in order: 6 4 5 3 2
+Ending init process...

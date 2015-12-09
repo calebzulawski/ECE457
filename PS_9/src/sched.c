@@ -67,7 +67,7 @@ struct sched_proc * create_proc(int ppid) {
     proc->state       = SCHED_READY;
     proc->pid         = pid;
     proc->ppid        = ppid;
-    proc->nice        = 20;
+    proc->nice        = 0;
     proc->accumulated = 0;
     proc->cpu_time    = 0;
     proc->stack       = newsp;
@@ -188,8 +188,8 @@ int sched_wait(int *exit_code) {
 }
 
 void sched_nice(int val) {
-    val = val >  19 ? val :  19;
-    val = val < -20 ? val : -20;
+    val = val >  19 ?  19 : val;
+    val = val < -20 ? -20 : val;
     current->nice = val;
 }
 
@@ -224,7 +224,7 @@ void sched_ps() {
 
 int getPriority(int pid) {
     if (queue->procs[pid] != NULL) {
-        int priority = 20 - queue->procs[pid]->nice - queue->procs[pid]->accumulated/2;
+        int priority = 20 - queue->procs[pid]->nice - (int)queue->procs[pid]->accumulated/2;
         // priority = priority > 39 ? 39 : priority;
         // priority = priority < 0  ? 0  : priority;
         queue->procs[pid]->priority = priority;

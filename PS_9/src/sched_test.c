@@ -6,6 +6,24 @@
 #include <unistd.h>
 
 void child() {
+	// priority: 6, 4, 5, 3, 2
+	switch (sched_getpid()) {
+		case 2:
+			sched_nice(10);
+			break;
+		case 3:
+			sched_nice(8);
+			break;
+		case 4:
+			sched_nice(4);
+			break;
+		case 5:
+			sched_nice(6);
+			break;
+		case 6:
+			sched_nice(2);
+			break;
+	}
 	printf("In child with pid %d, ppid %d\n", sched_getpid(), sched_getppid());
 	unsigned long max = 1e8;
 	for (unsigned long i = 0; i < max; i++) {
@@ -29,12 +47,22 @@ void init() {
 				break;
 		}	
 	}
-	printf("In parent with pid %d, child pid %d\n", sched_getpid(), pid);
+	printf("In parent with pid %d\n", sched_getpid());
 	int code;
+	// unsigned long max = 1e9;
+	// for (unsigned long i = 0; i < max; i++) {
+	// 	getpid();
+	// }
+	int order [5];
 	for (int i = 0; i < 5; i++) {
 		sched_wait(&code);
+		order[i] = code;
 		printf("Child returned with code %d\n", code);
 	}
+	printf("Children returned in order:");
+	for (int i = 0; i < 5; i++)
+		printf(" %d", order[i]);
+	printf("\n");
 	sched_exit(0);
 	printf("Ending init process...\n");
 	exit(0);
