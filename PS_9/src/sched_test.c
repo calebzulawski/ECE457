@@ -49,10 +49,6 @@ void init() {
 	}
 	printf("In parent with pid %d\n", sched_getpid());
 	int code;
-	// unsigned long max = 1e9;
-	// for (unsigned long i = 0; i < max; i++) {
-	// 	getpid();
-	// }
 	int order [5];
 	for (int i = 0; i < 5; i++) {
 		sched_wait(&code);

@@ -225,8 +225,6 @@ void sched_ps() {
 int getPriority(int pid) {
     if (queue->procs[pid] != NULL) {
         int priority = 20 - queue->procs[pid]->nice - (int)queue->procs[pid]->accumulated/2;
-        // priority = priority > 39 ? 39 : priority;
-        // priority = priority < 0  ? 0  : priority;
         queue->procs[pid]->priority = priority;
         return priority;
     } else {
