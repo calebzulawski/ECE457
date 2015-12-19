@@ -1,14 +1,19 @@
 #include <pthread.h>
+#include <poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <time.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <poll.h>
 
-#define PENDING 1
-#define MAXCONN 32
-#define PORT 81
+#define PENDING  1
+#define MAXCONN  10
+#define PORT     1234
+#define BUFFSIZE 4096
 
 void write_all(int fd, const char * c, size_t n) {
 	do {
@@ -21,13 +26,13 @@ void write_all(int fd, const char * c, size_t n) {
 	} while (n > 0);
 }
 
-void read_all(int fd, const char *c, size_t n) {
+void read_all(int fd, char *c, size_t n) {
 	do {
 		ssize_t readin = read(fd, c, n);
 		n -= readin;
 		if (readin == -1) {
 			perror("read()");
-			exit(-1)
+			exit(-1);
 		}
 	} while (n > 0);
 }
@@ -40,14 +45,13 @@ struct client {
 	int connect_to;
 };
 
-struct client connections * [MAXCONN];
+struct client * connections [MAXCONN];
 
-int thread_start(int id) {
-	struct pollfd pollfds[2];
-	struct client this_connection [2];
-	this_connection[0] = connections[id];
-	pollfds[0].fd = this_connection[0].fd;
-	pollfds[0].events = POLLIN | POLLOUT | POLLERR;
+static void * thread_start(void * arg) {
+	struct client * this_connection [2];
+	this_connection[0] = arg;
+
+
 	for(;;) {
 		char text [13];
 		read_all(this_connection[0]->fd, text, 13);
@@ -55,20 +59,59 @@ int thread_start(int id) {
 			break;
 	}
 
-	for(;;) {
+	this_connection[1] = connections[this_connection[0]->connect_to];
 
+	struct pollfd pollfds[2];
+	pollfds[0].fd = this_connection[0]->fd;
+	pollfds[0].events = POLLIN | POLLERR;
+	pollfds[1].fd = this_connection[1]->fd;
+	pollfds[1].events = POLLOUT | POLLERR;
+
+	printf("Routing to %d\n", this_connection[0]->connect_to);
+
+	char buffer [BUFFSIZE];
+	for(;;) {
+		int ret = poll(pollfds, 2, 1000);
+		if (ret == -1) {
+			perror("poll()");
+			this_connection[0]->active = 0;
+			pthread_exit(NULL);
+		} else if (ret == 0) {
+			printf("Poll 0\n");
+			continue;
+		}
+
+		printf("Came out of poll.\n\tsource = %x\n\tdest = %x\n", pollfds[0].revents, pollfds[1].revents);
+
+		// Process possibilities
+		if (pollfds[0].revents & POLLERR || pollfds[1].revents & POLLERR) {
+			printf("Dropping\n");
+			this_connection[0]->active = 0;
+			pthread_exit(NULL);
+		} else if (pollfds[0].revents && pollfds[1].revents) {
+			ssize_t len = recv(pollfds[0].fd, buffer, BUFFSIZE, MSG_DONTWAIT);
+			if (len == -1) {
+				perror("recv()");
+				this_connection[0]->active = 0;
+				pthread_exit(NULL);
+			} else if (len > 0) {
+				//while (pthread_mutex_lock(&this_connection[1]->lock));
+				write_all(pollfds[1].fd, buffer, len);
+				//while (pthread_mutex_unlock(&this_connection[1]->lock));
+			}
+		}
 	}
 }
 
 void add_connection(int fd) {
 	int id = -1;
 	for (int i = 0; i < MAXCONN; i++) {
-		if (connections[i] == NULL){
+		if (connections[i] == NULL) {
 			id = i;
 			break;
 		} else if (connections[i]->active == 0) {
 			pthread_join(connections[i]->thread, NULL);
-			free(connections[i])
+			free(connections[i]);
 			id = i;
 			break;
 		}
@@ -79,19 +122,22 @@ void add_connection(int fd) {
 		return;
 	}
 	struct client * c = (struct client *) malloc(sizeof(struct client));
-	if (c == -1) {
+	if (c == (struct client *)-1) {
 		perror("malloc()");
 		exit(-1);
 	}
+	char msg [20];
+	sprintf(msg, "CONNECTED, CLIENT %d\n", id);
+	write_all(fd, msg, strlen(msg));
 
 	c->active = 1;
 	c->fd = fd;
 	c->connect_to = -1;
-	c->lock = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_init(&c->lock, NULL);
 
 	connections[id] = c;
 
-	pthread_create(&c->thread, NULL, &thread_start, &id);
+	pthread_create(&c->thread, NULL, &thread_start, c);
 }
 
 int main(int argc, char** argv) {
@@ -102,10 +148,10 @@ int main(int argc, char** argv) {
 	}
 	struct sockaddr_in addr;
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(81);
-	inet_aton("127.0.0.1", &addr.sin_addr, sizeof(struct sockaddr_in));
+	addr.sin_port = htons(PORT);
+	inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
 
-	if (bind(sockfd, &addr) == -1) {
+	if (bind(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) == -1) {
 		perror("bind()");
 		exit(-1);
 	}
@@ -114,12 +160,10 @@ int main(int argc, char** argv) {
 		exit(-1);
 	}
 
-	memset(connections, NULL, sizeof(struct client *) * MAXCONN);
+	memset(connections, 0, sizeof(struct client *) * MAXCONN);
 
 	for(;;) {
-		newfd = accept(sockfd, NULL, NULL);
-		add_connection(newfd)
+		int newfd = accept(sockfd, NULL, NULL);
+		add_connection(newfd);
 	}
-
-
 }
