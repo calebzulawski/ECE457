@@ -77,27 +77,25 @@ static void * thread_start(void * arg) {
 			this_connection[0]->active = 0;
 			pthread_exit(NULL);
 		} else if (ret == 0) {
-			printf("Poll 0\n");
 			continue;
 		}
-
-		printf("Came out of poll.\n\tsource = %x\n\tdest = %x\n", pollfds[0].revents, pollfds[1].revents);
-
-		// Process possibilities
+		
 		if (pollfds[0].revents & POLLERR || pollfds[1].revents & POLLERR) {
 			printf("Dropping\n");
 			this_connection[0]->active = 0;
 			pthread_exit(NULL);
 		} else if (pollfds[0].revents && pollfds[1].revents) {
+			pollfds[0].revents = 0;
+			pollfds[0].revents = 0;
 			ssize_t len = recv(pollfds[0].fd, buffer, BUFFSIZE, MSG_DONTWAIT);
 			if (len == -1) {
 				perror("recv()");
 				this_connection[0]->active = 0;
 				pthread_exit(NULL);
 			} else if (len > 0) {
-				//while (pthread_mutex_lock(&this_connection[1]->lock));
+				while (pthread_mutex_lock(&this_connection[1]->lock));
 				write_all(pollfds[1].fd, buffer, len);
-				//while (pthread_mutex_unlock(&this_connection[1]->lock));
+				while (pthread_mutex_unlock(&this_connection[1]->lock));
 			}
 		}
 	}
